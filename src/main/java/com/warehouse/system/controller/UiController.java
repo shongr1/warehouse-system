@@ -401,5 +401,26 @@ public class UiController {
         return "redirect:/ui/warehouses/" + id;
     }
 
+    @GetMapping("/ui/admin")
+    public String adminDashboard(HttpSession session, Model model) {
+        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
+        if (!AuthController.isAdmin(session)) throw new RuntimeException("Forbidden");
+
+        // כל המשתמשים (אפשר לסנן רק Managers)
+        var managers = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == UserRole.WAREHOUSE_MANAGER)
+                .toList();
+
+        // כל המחסנים
+        var warehouses = warehouseRepository.findAll();
+
+        // נתונים מהירים
+        model.addAttribute("managers", managers);
+        model.addAttribute("warehouses", warehouses);
+        model.addAttribute("managersCount", managers.size());
+        model.addAttribute("warehousesCount", warehouses.size());
+
+        return "admin-dashboard";
+    }
 
 }
