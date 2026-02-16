@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <title>Warehouses</title>
+    <style>
+        body { font-family: Arial; background:#f4f6f8; padding:40px; }
+
+        .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+        a.link { text-decoration:none; color:#2c3e50; font-weight:bold; }
+
+        table { border-collapse: collapse; width: 100%; background: white; border-radius: 10px; overflow: hidden; }
+        th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; vertical-align: middle; }
+        th { background: #2c3e50; color: white; }
+        tr:hover { background: #f1f1f1; }
+
+        .actions a {
+            display:inline-block;
+            padding:6px 10px;
+            border-radius:8px;
+            background:#2c3e50;
+            color:white;
+            text-decoration:none;
+            font-size: 13px;
+            margin-right:6px;
+        }
+
+        .actions a.secondary {
+            background:#6b7280;
+        }
+
+        .actions a:hover { opacity:.92; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <h2>Warehouses</h2>
+    <a class="link" th:href="@{/ui}">← Back</a>
+</div>
+
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Location</th>
+        <th>Owner</th>
+        <th>Actions</th>
+    </tr>
+
+    <tr th:each="w : ${warehouses}">
+        <td th:text="${w.id}"></td>
+
+        <!-- לחיצה על שם המחסן -> מסך פירוט מחסן -->
+        <td>
+            <a class="link"
+               th:href="@{/ui/warehouses/{id}(id=${w.id})}"
+               th:text="${w.name}">
+            </a>
+        </td>
+
+        <td th:text="${w.location}"></td>
+        <td th:text="${w.owner != null ? w.owner.fullName : '—'}"></td>
+
+        <td class="actions">
+            <!-- הוספת מוצרים -->
+            <a th:href="@{/ui/warehouses/{id}/add(id=${w.id})}">
+                Add Products
+            </a>
+
+            <!-- צפייה במלאי / פירוט מחסן -->
+            <a class="secondary"
+               th:href="@{/ui/warehouses/{id}(id=${w.id})}">
+                View Stock
+            </a>
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

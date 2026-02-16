@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Products</title>
+    <style>
+        body { font-family: Arial; background:#f4f6f8; padding:40px; }
+        .card { background:white; padding:20px; border-radius:12px; max-width:900px; }
+        .row { display:flex; gap:12px; flex-wrap:wrap; }
+        .field { display:flex; flex-direction:column; min-width:240px; flex:1; }
+        label { font-weight:bold; margin-bottom:6px; }
+        input, select, textarea { padding:10px; border:1px solid #ccc; border-radius:8px; }
+        textarea { resize: vertical; }
+        button { padding:10px 14px; border:none; border-radius:8px; background:#2c3e50; color:white; cursor:pointer; }
+        a { text-decoration:none; display:inline-block; margin-bottom:16px; }
+        .hint { color:#666; margin-top:10px; }
+        .divider { margin:16px 0; height:1px; background:#e5e7eb; }
+    </style>
+</head>
+<body>
+
+<a th:href="@{/ui}">← Back</a>
+<h2>Add Products to Warehouse</h2>
+
+<div class="card">
+    <form th:action="@{/ui/stocks}" th:object="${stockForm}" method="post">
+
+        <!-- חשוב אם יש Spring Security (CSRF) -->
+        <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+
+        <div class="row">
+
+            <div class="field">
+                <label>Warehouse</label>
+                <select th:field="*{warehouseId}" required>
+                    <option value="" selected disabled>Choose warehouse...</option>
+                    <option th:each="w : ${warehouses}"
+                            th:value="${w.id}"
+                            th:text="${w.name + ' (id=' + w.id + ')'}">
+                    </option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Product (ItemType)</label>
+                <select th:field="*{itemTypeId}" required>
+                    <option value="" selected disabled>Choose product...</option>
+                    <option th:each="it : ${itemTypes}"
+                            th:value="${it.id}"
+                            th:text="${it.name + ' | ' + it.catalogNumber}">
+                    </option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Quantity</label>
+                <input type="number" min="1" th:field="*{quantity}" required />
+            </div>
+
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- ✅ SERIALIZED SUPPORT -->
+        <div class="row">
+
+            <div class="field">
+                <label>Serial Mode</label>
+                <select th:field="*{serialMode}">
+                    <option value="AUTO">AUTO (Start + Quantity)</option>
+                    <option value="MANUAL">MANUAL (List of serials)</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Start Serial (AUTO)</label>
+                <input type="text" th:field="*{startSerial}" placeholder="e.g. 1000" />
+            </div>
+
+            <div class="field" style="min-width: 100%; flex: 1;">
+                <label>Manual Serials (MANUAL)</label>
+                <textarea rows="3"
+                          th:field="*{manualSerials}"
+                          placeholder="Write serials separated by commas or new lines"></textarea>
+            </div>
+
+        </div>
+
+        <br/>
+        <button type="submit">Add / Increase</button>
+
+        <div class="hint">
+            Tip: If the selected product is NOT serialized, only Quantity matters.<br/>
+            If it IS serialized: choose AUTO and fill Start Serial, or choose MANUAL and paste serials list.
+        </div>
+    </form>
+</div>
+
+</body>
+</html>

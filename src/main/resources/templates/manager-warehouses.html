@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <title>Manager Dashboard</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Tom Select -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+
+    <!-- Your Dashboard Theme -->
+    <link rel="stylesheet" th:href="@{/dashboard.css}">
+
+    <!-- CSRF (if Spring Security) -->
+    <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}">
+    <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : ''}">
+</head>
+
+<body class="dashboard-page">
+
+<div class="container dashboard-wrap py-5">
+
+    <!-- HERO HEADER -->
+    <div class="hero">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+
+            <div>
+                <h1 class="hero-title m-0">Manager Dashboard</h1>
+                <div class="hero-sub"
+                     th:text="${selectedManager != null
+                        ? 'Personal No. ' + selectedManager.personalNumber
+                        : 'Select a manager to continue'}">
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <a th:href="@{/ui}" class="btn btn-outline-secondary">Back to Home</a>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Success Message -->
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+
+    <!-- Manager Select -->
+    <div class="glass-card mb-4">
+        <div class="card-body">
+            <form method="get" th:action="@{/ui/managers/warehouses}">
+                <label class="form-label">Select Manager</label>
+                <select name="personalNumber" class="form-select" onchange="this.form.submit()">
+                    <option value="">Choose manager...</option>
+                    <option th:each="u : ${users}"
+                            th:value="${u.personalNumber}"
+                            th:text="${u.fullName + ' (' + u.personalNumber + ')'}"
+                            th:selected="${selectedManager != null and u.personalNumber == selectedManager.personalNumber}">
+                    </option>
+                </select>
+            </form>
+        </div>
+    </div>
+
+    <!-- Manager Content -->
+    <div th:if="${selectedManager != null}">
+
+        <!-- Add Product -->
+        <div class="glass-card mb-4">
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between align-items-center mb-3 gap-3 flex-wrap">
+                    <div>
+                        <div class="section-title">Add Product to Inventory</div>
+                        <div class="section-hint">Select warehouse and product to add stock</div>
+                    </div>
+
+                    <span class="text-muted small"
+                          th:text="${'Selected: ' + selectedManager.fullName + ' (' + selectedManager.personalNumber + ')'}"></span>
+                </div>
+
+                <form th:action="@{/ui/stocks(personalNumber=${selectedManager.personalNumber})}"
+                      th:object="${stockForm}" method="post">
+
+                    <div class="row g-3">
+
+                        <div class="col-md-3">
+                            <label class="form-label">Warehouse</label>
+                            <select class="form-select" th:field="*{warehouseId}" id="warehouseAddSelect" required>
+                                <option value="">Choose warehouse...</option>
+                                <option th:each="w : ${warehouses}"
+                                        th:value="${w.id}"
+                                        th:text="${w.name}">
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-5">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <label class="form-label mb-0">Product</label>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#createItemTypeModal">
+                                    + New
+                                </button>
+                            </div>
+
+                            <select class="form-select"
+                                    id="productSelect"
+                                    th:field="*{itemTypeId}" required>
+                                <option value="">Search product...</option>
+                                <option th:each="it : ${itemTypes}"
+                                        th:value="${it.id}"
+                                        th:text="${it.name + ' | ' + it.catalogNumber}"
+                                        th:attr="data-serialized=${it.serialized}">
+                                </option>
+                            </select>
+
+                            <div class="form-text">
+                                Start typing to search. Click <b>+ New</b> to create a new product type without refresh.
+                            </div>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" min="1"
+                                   class="form-control"
+                                   id="quantityInput"
+                                   th:field="*{quantity}" required>
+                        </div>
+
+                        <div class="col-md-2 d-grid">
+                            <label class="form-label invisible">.</label>
+                            <button type="submit" class="btn btn-primary">Add</button>
+                        </div>
+                    </div>
+
+                    <!-- SERIALIZED -->
+                    <div id="serializedBox" class="row mt-4 g-3" style="display:none;">
+                        <div class="col-md-3">
+                            <label class="form-label">Serial Mode</label>
+                            <select class="form-select"
+                                    th:field="*{serialMode}"
+                                    id="serialModeSelect">
+                                <option value="AUTO">AUTO (sequential)</option>
+                                <option value="MANUAL">MANUAL (paste list)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3" id="autoSerialFields">
+                            <label class="form-label">Start Serial</label>
+                            <input type="number"
+                                   class="form-control"
+                                   id="startSerialInput"
+                                   th:field="*{startSerial}"
+                                   placeholder="e.g. 6060">
+                            <div class="form-text">Generates: start, start+1, start+2...</div>
+                        </div>
+
+                        <div class="col-md-6" id="manualSerialFields" style="display:none;">
+                            <label class="form-label">Manual Serials</label>
+                            <textarea rows="3"
+                                      class="form-control"
+                                      id="manualSerialsInput"
+                                      th:field="*{manualSerials}"
+                                      placeholder="6060&#10;6065&#10;7001"></textarea>
+                            <div class="form-text">Comma/new-line separated. Quantity auto-calculates.</div>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+
+        <!-- STOCK (Warehouse dropdown + search) -->
+        <div class="glass-card">
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between align-items-center mb-3 gap-3 flex-wrap">
+                    <div>
+                        <div class="section-title">Warehouse Stock</div>
+                        <div class="section-hint">Choose a warehouse to view its stock and filter by product name</div>
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap">
+                        <!-- Warehouse filter -->
+                        <select class="form-select" id="warehouseFilterSelect" style="min-width: 240px;">
+                            <option value="">Choose warehouse...</option>
+                            <option th:each="w : ${warehouses}"
+                                    th:value="${w.id}"
+                                    th:text="${w.name}">
+                            </option>
+                        </select>
+
+                        <!-- Product search -->
+                        <input type="text"
+                               class="form-control"
+                               id="stockSearchInput"
+                               placeholder="Search product name..."
+                               style="min-width: 240px;">
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-dark-custom align-middle" id="stockTable">
+                        <thead>
+                        <tr>
+                            <th>Warehouse</th>
+                            <th>Catalog</th>
+                            <th>Product</th>
+                            <th>Quantity</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                        </thead>
+
+                        <tbody>
+                        <tr th:each="s : ${stocks}"
+                            th:attr="data-warehouse-id=${s.warehouse.id}">
+
+                            <td th:text="${s.warehouse.name}"></td>
+                            <td th:text="${s.itemType.catalogNumber}"></td>
+
+                            <td class="product-name">
+                                <span th:text="${s.itemType.name}"></span>
+                                <span th:if="${s.itemType.serialized}" class="serialized-badge">Serialized</span>
+                            </td>
+
+                            <td>
+                                <span class="quantity-pill" th:text="${s.quantity}"></span>
+                            </td>
+
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-danger"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#confirmDeleteModal"
+                                        th:attr="data-id=${s.id}, data-pn=${selectedManager.personalNumber}">
+                                    Remove
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- Shown only when filtering yields no results -->
+                        <tr id="noResultsRow" class="d-none">
+                            <td colspan="5" class="text-muted">No matching products.</td>
+                        </tr>
+
+                        <tr th:if="${#lists.isEmpty(stocks)}">
+                            <td colspan="5" class="text-muted">No products yet for this manager.</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
+    </div><!-- /selectedManager -->
+
+</div><!-- /container -->
+
+<!-- ============ MODALS ============ -->
+
+<!-- Delete Confirm Modal -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Removal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                Remove this product from stock?
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+
+                <form th:action="@{/ui/stocks/delete}" method="post" class="m-0">
+                    <input type="hidden" name="stockBalanceId" id="deleteStockBalanceId">
+                    <input type="hidden" name="personalNumber" id="deletePersonalNumber">
+                    <button type="submit" class="btn btn-danger">Remove</button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Create ItemType Modal (AJAX) -->
+<div class="modal fade" id="createItemTypeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Create Product Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div class="mb-3">
+                    <label class="form-label">Catalog Number</label>
+                    <input type="text" class="form-control" id="newCatalogNumber" placeholder="TAB-1001">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-control" id="newItemName" placeholder="Tablet">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Serialized?</label>
+                    <select class="form-select" id="newSerialized">
+                        <option value="false">No</option>
+                        <option value="true">Yes</option>
+                    </select>
+                </div>
+
+                <div class="alert alert-danger d-none" id="createItemError"></div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" type="button" id="createItemBtn">Create</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ============ SCRIPTS ============ -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+
+<script>
+    // --- CSRF helper (if Spring Security) ---
+    function csrfHeaders() {
+        const token = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || "";
+        const header = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || "";
+        if (!token || !header) return {};
+        return { [header]: token };
+    }
+
+    // --- TomSelect for product search ---
+   const productTom = new TomSelect("#productSelect", {
+    create: false,
+    maxOptions: 2000,
+    placeholder: "Search product...",
+    dropdownParent: "body"   // ✅ IMPORTANT: prevents clipping inside glass cards
+});
+
+
+    // --- Delete modal inject data ---
+    const deleteModal = document.getElementById("confirmDeleteModal");
+    deleteModal?.addEventListener("show.bs.modal", (event) => {
+        const btn = event.relatedTarget;
+        document.getElementById("deleteStockBalanceId").value = btn.getAttribute("data-id");
+        document.getElementById("deletePersonalNumber").value = btn.getAttribute("data-pn");
+    });
+
+    // --- Serialized UI ---
+    function updateSerializedUI() {
+        const nativeSelect = document.getElementById('productSelect');
+        const selected = nativeSelect.options[nativeSelect.selectedIndex];
+        const isSerialized = selected && selected.getAttribute('data-serialized') === 'true';
+
+        const box = document.getElementById('serializedBox');
+        const qty = document.getElementById('quantityInput');
+
+        box.style.display = isSerialized ? 'flex' : 'none';
+        if (!isSerialized) {
+            qty.disabled = false;
+            return;
+        }
+        updateSerialModeUI();
+    }
+
+    function updateSerialModeUI() {
+        const mode = document.getElementById('serialModeSelect').value;
+        const autoField = document.getElementById('autoSerialFields');
+        const manualField = document.getElementById('manualSerialFields');
+        const qty = document.getElementById('quantityInput');
+
+        if (mode === "AUTO") {
+            autoField.style.display = "block";
+            manualField.style.display = "none";
+            qty.disabled = false;
+        } else {
+            autoField.style.display = "none";
+            manualField.style.display = "block";
+            qty.disabled = true;
+            updateQuantityFromManual();
+        }
+    }
+
+    function updateQuantityFromManual() {
+        const textarea = document.getElementById('manualSerialsInput');
+        const qty = document.getElementById('quantityInput');
+        if (!textarea || !qty) return;
+
+        const parts = textarea.value
+            .split(/[\n\r,]+/)
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        qty.value = parts.length;
+    }
+
+    document.getElementById('productSelect')?.addEventListener('change', updateSerializedUI);
+    document.getElementById('serialModeSelect')?.addEventListener('change', updateSerialModeUI);
+    document.getElementById('manualSerialsInput')?.addEventListener('input', updateQuantityFromManual);
+
+    // --- Create ItemType (AJAX) ---
+    function showCreateError(msg) {
+        const box = document.getElementById("createItemError");
+        box.textContent = msg;
+        box.classList.remove("d-none");
+    }
+    function clearCreateError() {
+        const box = document.getElementById("createItemError");
+        box.textContent = "";
+        box.classList.add("d-none");
+    }
+
+    document.getElementById("createItemBtn")?.addEventListener("click", async () => {
+        clearCreateError();
+
+        const catalogNumber = document.getElementById("newCatalogNumber").value.trim();
+        const name = document.getElementById("newItemName").value.trim();
+        const serialized = document.getElementById("newSerialized").value;
+
+        if (!catalogNumber || !name) {
+            showCreateError("Catalog Number and Name are required.");
+            return;
+        }
+
+        try {
+            const body = new URLSearchParams();
+            body.append("catalogNumber", catalogNumber);
+            body.append("name", name);
+            body.append("serialized", serialized);
+
+            const res = await fetch("/ui/item-types/ajax", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    ...csrfHeaders()
+                },
+                body: body.toString()
+            });
+
+            if (!res.ok) {
+                const txt = await res.text();
+                showCreateError("Failed to create product type. " + txt);
+                return;
+            }
+
+            const created = await res.json();
+
+            const label = `${created.name} | ${created.catalogNumber}`;
+            productTom.addOption({ value: String(created.id), text: label });
+            productTom.refreshOptions(false);
+            productTom.setValue(String(created.id), true);
+
+            const nativeSelect = document.getElementById("productSelect");
+            const opt = Array.from(nativeSelect.options).find(o => o.value === String(created.id));
+            if (opt) opt.setAttribute("data-serialized", String(created.serialized));
+
+            const modalEl = document.getElementById("createItemTypeModal");
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+
+            document.getElementById("newCatalogNumber").value = "";
+            document.getElementById("newItemName").value = "";
+            document.getElementById("newSerialized").value = "false";
+
+            updateSerializedUI();
+
+        } catch (e) {
+            showCreateError("Network error: " + e);
+        }
+    });
+
+    // --- Stock filtering: warehouse dropdown + product name search ---
+    const warehouseFilterSelect = document.getElementById("warehouseFilterSelect");
+    const stockSearchInput = document.getElementById("stockSearchInput");
+    const stockTable = document.getElementById("stockTable");
+    const noResultsRow = document.getElementById("noResultsRow");
+
+    function applyStockFilters() {
+        if (!stockTable) return;
+
+        const selectedWarehouseId = (warehouseFilterSelect?.value || "").trim();
+        const q = (stockSearchInput?.value || "").trim().toLowerCase();
+
+        const allRows = Array.from(stockTable.querySelectorAll("tbody tr"))
+            .filter(r => r.id !== "noResultsRow")
+            .filter(r => !r.hasAttribute("th:if"));
+
+        let visibleCount = 0;
+
+        allRows.forEach(row => {
+            const rowWarehouseId = row.getAttribute("data-warehouse-id") || "";
+            const productCell = row.querySelector(".product-name");
+            const productName = (productCell?.textContent || "").trim().toLowerCase();
+
+            const matchWarehouse = selectedWarehouseId !== "" && rowWarehouseId === selectedWarehouseId;
+            const matchName = q === "" ? true : productName.includes(q);
+
+            const show = matchWarehouse && matchName;
+            row.style.display = show ? "" : "none";
+            if (show) visibleCount++;
+        });
+
+        if (noResultsRow) {
+            if (selectedWarehouseId !== "" && visibleCount === 0) {
+                noResultsRow.classList.remove("d-none");
+            } else {
+                noResultsRow.classList.add("d-none");
+            }
+        }
+    }
+
+    warehouseFilterSelect?.addEventListener("change", () => {
+        stockSearchInput.value = "";
+        applyStockFilters();
+    });
+    stockSearchInput?.addEventListener("input", applyStockFilters);
+
+    // Init once
+    updateSerializedUI();
+    applyStockFilters();
+</script>
+
+</body>
+</html>

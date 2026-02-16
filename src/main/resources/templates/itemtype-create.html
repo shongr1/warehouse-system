@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Item Type</title>
+</head>
+<body>
+
+<h2>Create Item Type</h2>
+
+<form th:action="@{/ui/item-types}" method="post" th:object="${createItemTypeForm}">
+
+    <div>
+        <label>Catalog Number:</label>
+        <input type="text" th:field="*{catalogNumber}" required />
+    </div>
+
+    <div>
+        <label>Name:</label>
+        <input type="text" th:field="*{name}" required />
+    </div>
+
+    <div>
+        <label>Serialized?</label>
+        <input type="checkbox" th:field="*{serialized}" />
+    </div>
+
+    <button type="submit">Create</button>
+</form>
+
+<br/>
+<a th:href="@{/ui}">Back</a>
+
+</body>
+</html>

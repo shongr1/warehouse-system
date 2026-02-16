@@ -1,0 +1,317 @@
+body.dashboard-page {
+    margin: 0;
+    background:
+        radial-gradient(circle at 85% 75%, rgba(0, 180, 255, 0.25), transparent 40%),
+        radial-gradient(circle at 20% 0%, rgba(140, 0, 255, 0.3), transparent 40%),
+        linear-gradient(180deg, #0a1226 0%, #050913 100%);
+    font-family: 'Inter', sans-serif;
+    color: #fff;
+}
+
+/* Container */
+.dashboard-container {
+    max-width: 1500px;
+}
+
+/* Hero */
+.hero-section {
+    padding: 30px 0;
+}
+
+.hero-title {
+    font-size: 42px;
+    font-weight: 800;
+    background: linear-gradient(90deg, #9d7bff, #49b6ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Glass Card */
+.glass-card {
+    background: rgba(24, 32, 65, 0.55);
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(14px);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+    padding: 25px;
+    margin-bottom: 25px;
+}
+
+/* Section title */
+.section-title {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+/* Inputs */
+.form-control,
+.form-select {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background: rgba(255,255,255,0.08);
+    border-color: #6c8bff;
+    box-shadow: 0 0 0 0.2rem rgba(108,139,255,.25);
+}
+
+/* Primary button */
+.btn-primary {
+    background: linear-gradient(135deg, #7c5cff, #4f9bff);
+    border: none;
+    border-radius: 14px;
+    padding: 10px 20px;
+}
+
+.btn-primary:hover {
+    opacity: 0.95;
+}
+
+/* Table */
+.table-dark-custom {
+    background: transparent;
+    color: #fff;
+}
+
+.table-dark-custom thead {
+    color: rgba(255,255,255,.6);
+    border-bottom: 1px solid rgba(255,255,255,.1);
+}
+
+.table-dark-custom tbody tr {
+    transition: background .2s ease;
+}
+
+.table-dark-custom tbody tr:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+/* Quantity pill */
+.quantity-pill {
+    background: linear-gradient(90deg, #7c5cff, #5f7dff);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+/* Serialized badge */
+.serialized-badge {
+    background: rgba(0,255,255,0.15);
+    color: #35d3ff;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    margin-left: 8px;
+}
+/* =========================
+   DARK FIXES: dropdowns + table head
+   Paste at END of dashboard.css
+   ========================= */
+
+/* Native <select> dropdown options (Chrome/Edge) */
+body.dashboard-page select option {
+    background: #0b1020 !important;
+    color: #ffffff !important;
+}
+
+/* Bootstrap / general form controls */
+body.dashboard-page .form-control,
+body.dashboard-page .form-select {
+    background: rgba(255,255,255,0.06) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    color: rgba(255,255,255,0.92) !important;
+}
+
+body.dashboard-page .form-control::placeholder {
+    color: rgba(255,255,255,0.45) !important;
+}
+
+body.dashboard-page .form-control:focus,
+body.dashboard-page .form-select:focus {
+    background: rgba(255,255,255,0.08) !important;
+    border-color: rgba(124,92,255,0.7) !important;
+    box-shadow: 0 0 0 .2rem rgba(124,92,255,0.20) !important;
+}
+
+/* TomSelect dropdown (the product search) */
+body.dashboard-page .ts-control,
+body.dashboard-page .ts-dropdown,
+body.dashboard-page .ts-dropdown .option,
+body.dashboard-page .ts-dropdown .optgroup-header {
+    background: #0b1020 !important;
+    color: rgba(255,255,255,0.92) !important;
+    border-color: rgba(255,255,255,0.12) !important;
+}
+
+body.dashboard-page .ts-control {
+    border-radius: 14px !important;
+}
+
+body.dashboard-page .ts-dropdown {
+    border-radius: 14px !important;
+    overflow: hidden;
+    box-shadow: 0 18px 60px rgba(0,0,0,.55) !important;
+}
+
+body.dashboard-page .ts-dropdown .option:hover,
+body.dashboard-page .ts-dropdown .active {
+    background: rgba(124,92,255,0.22) !important;
+    color: #fff !important;
+}
+
+body.dashboard-page .ts-dropdown .selected {
+    background: rgba(53,211,255,0.18) !important;
+    color: #fff !important;
+}
+
+/* Fix "white bar" table header (Bootstrap table-light) */
+body.dashboard-page .table-light,
+body.dashboard-page thead.table-light,
+body.dashboard-page .table > :not(caption) > * > * {
+    background: transparent !important;
+    color: rgba(255,255,255,0.75) !important;
+    border-color: rgba(255,255,255,0.10) !important;
+}
+
+/* Your dark table look (works for normal .table too) */
+body.dashboard-page table.table {
+    color: rgba(255,255,255,0.92) !important;
+}
+
+body.dashboard-page table.table tbody tr:hover {
+    background: rgba(255,255,255,0.05) !important;
+}
+
+body.dashboard-page table.table td,
+body.dashboard-page table.table th {
+    border-color: rgba(255,255,255,0.08) !important;
+}
+
+/* Make the "Warehouse Stock" header row not white */
+body.dashboard-page #stockTable thead tr {
+    background: rgba(255,255,255,0.04) !important;
+}
+/* ============================
+   DARK GLASS MODAL THEME
+   ============================ */
+
+body.dashboard-page .modal-content {
+    background: rgba(16, 23, 45, 0.95) !important;
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    color: #fff !important;
+    border-radius: 20px !important;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+}
+
+body.dashboard-page .modal-header {
+    border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+}
+
+body.dashboard-page .modal-footer {
+    border-top: 1px solid rgba(255,255,255,0.08) !important;
+}
+
+body.dashboard-page .modal-title {
+    color: #fff !important;
+}
+
+body.dashboard-page .modal-content .form-label {
+    color: rgba(255,255,255,0.85) !important;
+}
+
+body.dashboard-page .modal-content .form-control,
+body.dashboard-page .modal-content .form-select {
+    background: rgba(255,255,255,0.06) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    color: #fff !important;
+}
+
+body.dashboard-page .modal-content .form-control::placeholder {
+    color: rgba(255,255,255,0.45) !important;
+}
+
+body.dashboard-page .btn-close {
+    filter: invert(1);
+}
+
+body.dashboard-page .modal-backdrop.show {
+    opacity: 0.85;
+    backdrop-filter: blur(4px);
+}
+/* ===== Glass Card (use instead of default .card) ===== */
+body.dashboard-page .glass-card {
+    background: rgba(16, 23, 45, 0.82) !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
+    backdrop-filter: blur(18px);
+    border-radius: 22px !important;
+    box-shadow: 0 30px 80px rgba(0,0,0,.55);
+    color: #fff !important;
+}
+
+body.dashboard-page .glass-card .card-body,
+body.dashboard-page .glass-card .card-header,
+body.dashboard-page .glass-card .card-footer {
+    background: transparent !important;
+    color: #fff !important;
+}
+
+/* Safety: if any bootstrap card sneaks in */
+body.dashboard-page .card {
+    background: rgba(16, 23, 45, 0.82) !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
+    color: #fff !important;
+}
+
+body.dashboard-page .card .card-body {
+    background: transparent !important;
+}
+
+/* Inputs inside cards */
+body.dashboard-page .glass-card .form-control,
+body.dashboard-page .glass-card .form-select {
+    background: rgba(255,255,255,0.07) !important;
+    border: 1px solid rgba(255,255,255,0.14) !important;
+    color: #fff !important;
+}
+/* =========================
+   TomSelect dropdown FIX
+   (dropdown getting clipped/hidden)
+   ========================= */
+
+/* 1) Allow dropdown to escape cards/containers */
+body.dashboard-page .glass-card,
+body.dashboard-page .card,
+body.dashboard-page .card-body,
+body.dashboard-page .container,
+body.dashboard-page .table-responsive {
+    overflow: visible !important;
+}
+
+/* 2) Make sure TomSelect dropdown is above everything */
+body.dashboard-page .ts-dropdown,
+body.dashboard-page .ts-dropdown.single,
+body.dashboard-page .ts-wrapper,
+body.dashboard-page .ts-control {
+    z-index: 9999 !important;
+}
+
+/* 3) If any parent creates stacking context, reduce issues */
+body.dashboard-page .glass-card {
+    position: relative;
+    z-index: 1;
+}
+
+/* 4) Prevent the dropdown from being cut off height-wise */
+body.dashboard-page .ts-dropdown {
+    max-height: 320px !important;
+    overflow-y: auto !important;
+}
+/* TomSelect dropdown rendered in <body> */
+body.dashboard-page .ts-dropdown {
+    z-index: 20000 !important;
+}

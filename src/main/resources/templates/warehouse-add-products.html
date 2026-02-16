@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="'Add Products • ' + ${warehouse.name}">Add Products</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/dashboard.css}">
+</head>
+
+<body class="dashboard-page">
+<div class="container py-5">
+
+    <!-- TOP BAR -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Add Products</h2>
+            <div class="text-muted small">
+                Warehouse: <b th:text="${warehouse.name}">Warehouse</b>
+                <span class="mx-2">•</span>
+                <span th:text="${warehouse.location}">Location</span>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-light"
+               th:href="@{/ui/warehouses/{id}(id=${warehouse.id})}">
+                ← Back to Warehouse
+            </a>
+            <a class="btn btn-outline-light" th:href="@{/ui}">Dashboard</a>
+        </div>
+    </div>
+
+    <!-- HELP CARD -->
+    <div class="glass-card p-4 mb-4">
+        <h5 class="mb-2">How it works</h5>
+        <div class="text-muted">
+            Choose an <b>Item Type</b>. If it is <b>Serialized</b>, select AUTO or MANUAL serial input.
+            Otherwise, just enter quantity.
+        </div>
+    </div>
+
+    <!-- ADD STOCK FORM -->
+    <div class="glass-card p-4 mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h5 class="mb-0">Add Inventory</h5>
+        </div>
+
+        <form method="post" th:action="@{/ui/stocks}" th:object="${stockForm}">
+            <!-- important -->
+            <input type="hidden" th:field="*{warehouseId}"/>
+
+            <div class="row g-3">
+
+                <!-- ITEM TYPE -->
+                <div class="col-12 col-lg-6">
+                    <label class="form-label">Item Type</label>
+                    <select class="form-select" th:field="*{itemTypeId}" id="itemTypeSelect">
+                        <option value="">-- Select --</option>
+                        <option th:each="it : ${itemTypes}"
+                                th:value="${it.id}"
+                                th:text="${it.catalogNumber + ' • ' + it.name + (it.serialized ? ' (Serialized)' : '')}">
+                        </option>
+                    </select>
+                    <div class="form-text">Catalog • Name • Serialized indicator</div>
+                </div>
+
+                <!-- QTY -->
+                <div class="col-12 col-lg-3">
+                    <label class="form-label">Quantity</label>
+                    <input class="form-control" type="number" min="1" placeholder="e.g. 5" th:field="*{quantity}" id="qtyInput">
+                    <div class="form-text">For serialized AUTO: how many serials to generate</div>
+                </div>
+
+                <!-- SERIAL MODE -->
+                <div class="col-12 col-lg-3">
+                    <label class="form-label">Serial Mode</label>
+                    <select class="form-select" th:field="*{serialMode}" id="serialMode">
+                        <option value="AUTO">AUTO</option>
+                        <option value="MANUAL">MANUAL</option>
+                    </select>
+                    <div class="form-text">Relevant only for serialized items</div>
+                </div>
+
+                <!-- AUTO SERIAL START -->
+                <div class="col-12 col-lg-6" id="autoBlock">
+                    <label class="form-label">Start Serial (AUTO)</label>
+                    <input class="form-control" type="text" placeholder="e.g. 10001" th:field="*{startSerial}">
+                    <div class="form-text">Generates serials: start, start+1, ...</div>
+                </div>
+
+                <!-- MANUAL SERIALS -->
+                <div class="col-12 col-lg-6" id="manualBlock" style="display:none;">
+                    <label class="form-label">Manual Serials (MANUAL)</label>
+                    <textarea class="form-control" rows="3"
+                              placeholder="Enter one per line or separated by commas"
+                              th:field="*{manualSerials}"></textarea>
+                    <div class="form-text">Duplicates are blocked</div>
+                </div>
+
+                <!-- ACTIONS -->
+                <div class="col-12 d-flex gap-2 mt-2">
+                    <button class="btn btn-primary" type="submit">
+                        + Add To Stock
+                    </button>
+
+                    <a class="btn btn-outline-light"
+                       th:href="@{/ui/warehouses/{id}(id=${warehouse.id})}">
+                        Cancel
+                    </a>
+                </div>
+
+            </div>
+        </form>
+    </div>
+
+    <!-- OPTIONAL: CREATE ITEM TYPE (simple inline card using same style) -->
+    <div class="glass-card p-4">
+        <h5 class="mb-3">Create Item Type</h5>
+
+        <form method="post" th:action="@{/ui/item-types}" th:object="${createItemTypeForm}">
+            <input type="hidden" name="warehouseId" th:value="${warehouse.id}"/>
+
+            <div class="row g-3">
+                <div class="col-12 col-lg-4">
+                    <label class="form-label">Catalog Number</label>
+                    <input class="form-control" type="text" placeholder="e.g. TAB-001" th:field="*{catalogNumber}">
+                </div>
+
+                <div class="col-12 col-lg-5">
+                    <label class="form-label">Name</label>
+                    <input class="form-control" type="text" placeholder="e.g. Tablet Samsung" th:field="*{name}">
+                </div>
+
+                <div class="col-12 col-lg-3 d-flex align-items-end">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" th:field="*{serialized}" id="serializedCheck">
+                        <label class="form-check-label" for="serializedCheck">
+                            Serialized
+                        </label>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <button class="btn btn-outline-light" type="submit">+ Create Item Type</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+<script>
+    // Toggle AUTO / MANUAL blocks
+    const serialMode = document.getElementById("serialMode");
+    const autoBlock = document.getElementById("autoBlock");
+    const manualBlock = document.getElementById("manualBlock");
+
+    function refreshSerialUI() {
+        const mode = (serialMode.value || "AUTO").toUpperCase();
+        if (mode === "MANUAL") {
+            manualBlock.style.display = "";
+            autoBlock.style.display = "none";
+        } else {
+            autoBlock.style.display = "";
+            manualBlock.style.display = "none";
+        }
+    }
+
+    serialMode.addEventListener("change", refreshSerialUI);
+    refreshSerialUI();
+</script>
+
+</body>
+</html>
