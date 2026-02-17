@@ -5,12 +5,9 @@ import com.warehouse.system.dto.CreateManagerForm;
 import com.warehouse.system.dto.CreateWarehouseForm;
 import com.warehouse.system.dto.StockForm;
 import com.warehouse.system.dto.WarehouseDto;
-import com.warehouse.system.entity.ItemType;
-import com.warehouse.system.entity.StockBalance;
-import com.warehouse.system.entity.User;
-import com.warehouse.system.entity.UserRole;
-import com.warehouse.system.entity.Warehouse;
+import com.warehouse.system.entity.*;
 import com.warehouse.system.repository.*;
+import com.warehouse.system.service.TransferService;
 import com.warehouse.system.ui.AuthController;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +15,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import com.warehouse.system.repository.TransferRequestRepository;
+
 
 import java.util.List;
 import java.util.Map;
@@ -30,20 +29,27 @@ public class UiController {
     private final ItemTypeRepository itemTypeRepository;
     private final StockBalanceRepository stockBalanceRepository;
     private final ItemRepository itemRepository;
+    private final TransferRequestRepository transferRequestRepository;
+    private final TransferService transferService;
 
     public UiController(
             WarehouseRepository warehouseRepository,
             UserRepository userRepository,
             ItemTypeRepository itemTypeRepository,
             StockBalanceRepository stockBalanceRepository,
-            ItemRepository itemRepository
+            ItemRepository itemRepository,
+            TransferRequestRepository transferRequestRepository,
+            TransferService transferService
     ) {
         this.warehouseRepository = warehouseRepository;
         this.userRepository = userRepository;
         this.itemTypeRepository = itemTypeRepository;
         this.stockBalanceRepository = stockBalanceRepository;
         this.itemRepository = itemRepository;
+        this.transferRequestRepository = transferRequestRepository;
+        this.transferService = transferService;
     }
+
 
     // ---------- HOME ----------
     @GetMapping("/ui")
@@ -266,6 +272,7 @@ public class UiController {
     }
 
     // ---------- WAREHOUSE DETAILS ----------
+    // ---------- WAREHOUSE DETAILS ----------
     @GetMapping("/ui/warehouses/{id}")
     public String warehouseDetails(@PathVariable Long id, HttpSession session, Model model) {
 
@@ -286,8 +293,12 @@ public class UiController {
         model.addAttribute("warehouse", warehouse);
         model.addAttribute("stocks", stockBalanceRepository.findByWarehouseId(id));
 
+        // ✅ NEW: bring serialized items to the page
+        model.addAttribute("items", itemRepository.findByWarehouseId(id));
+
         return "warehouse-details";
     }
+
 
     /**  @GetMapping("/ui/warehouses/view")
     public String viewWarehouseStock(@RequestParam Long id, HttpSession session, Model model) {
@@ -421,6 +432,81 @@ public class UiController {
         model.addAttribute("warehousesCount", warehouses.size());
 
         return "admin-dashboard";
+    }
+    @PostMapping("/ui/items/{id}/sign")
+    public String signItemToMe(@PathVariable Long id,
+                               @RequestHeader(value = "Referer", required = false) String referer,
+                               HttpSession session) {
+
+        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
+
+        String pn = AuthController.currentPn(session);
+        transferService.signToMe(id, pn);
+
+        return "redirect:" + (referer != null ? referer : "/ui");
+    }
+    /**
+    @PostMapping("/ui/items/{id}/transfer-request")
+    public String submitTransferRequest(@PathVariable Long id,
+                                        @RequestParam String toPersonalNumber,
+                                        @RequestParam(required = false) String note,
+                                        HttpSession session,
+                                        @RequestHeader(value = "Referer", required = false) String referer) {
+
+        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
+
+        String fromPn = AuthController.currentPn(session);
+
+        transferService.createTransferRequest(id, fromPn, toPersonalNumber, note);
+
+        return "redirect:" + (referer != null ? referer : "/ui");
+    }
+**/
+    @GetMapping("/ui/my-transfer-requests")
+    public String myTransferRequests(HttpSession session, Model model) {
+
+        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
+
+        String pn = AuthController.currentPn(session);
+
+        var me = userRepository.findByPersonalNumber(pn)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        var requests = transferRequestRepository.findByToUserIdAndStatus(me.getId(), TransferStatus.PENDING);
+
+        model.addAttribute("requests", requests);
+
+        return "my-transfer-requests";
+    }
+    @PostMapping("/ui/transfer-requests/{id}/approve")
+    public String approveTransfer(@PathVariable Long id, HttpSession session) {
+        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
+
+        String pn = AuthController.currentPn(session);
+        transferService.approve(id, pn);
+
+        return "redirect:/ui/my-transfer-requests";
+    }
+
+    @PostMapping("/ui/transfer-requests/{id}/reject")
+    public String rejectTransfer(@PathVariable Long id, HttpSession session) {
+        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
+
+        String pn = AuthController.currentPn(session);
+        transferService.reject(id, pn);
+
+        return "redirect:/ui/my-transfer-requests";
+    }
+    @GetMapping("/ui/my-signed-items")
+    public String mySignedItems(HttpSession session, Model model) {
+        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
+
+        String pn = AuthController.currentPn(session);
+        var me = userRepository.findByPersonalNumber(pn)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        model.addAttribute("items", itemRepository.findBySignedBy_Id(me.getId()));
+        return "my-signed-items";
     }
 
 }
