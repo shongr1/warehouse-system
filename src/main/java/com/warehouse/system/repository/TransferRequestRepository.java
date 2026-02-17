@@ -9,5 +9,6 @@ import java.util.List;
 public interface TransferRequestRepository extends JpaRepository<TransferRequest, Long> {
     boolean existsByItemIdAndStatus(Long itemId, TransferStatus status);
     List<TransferRequest> findByToUserIdAndStatus(Long toUserId, TransferStatus status);
-
+    List<TransferRequest> findAllByToUserIdAndStatusOrderByCreatedAtDesc(Long toUserId, TransferStatus status);
+    List<TransferRequest> findAllByToUserIdAndStatus(Long toUserId, TransferStatus status);
 }

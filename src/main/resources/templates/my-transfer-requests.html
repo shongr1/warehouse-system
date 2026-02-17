@@ -13,7 +13,14 @@
 
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="fw-bold mb-0">Incoming Transfer Requests</h2>
-        <a class="btn btn-outline-light" th:href="@{/ui}">← Back</a>
+
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-light" th:href="@{/ui/my-transfer-requests/pdf}" target="_blank">
+                Export PDF
+            </a>
+
+            <a class="btn btn-outline-light" th:href="@{/ui}">← Back</a>
+        </div>
     </div>
 
     <div class="glass-card p-4">
@@ -42,7 +49,13 @@
                     <td th:text="${r.createdAt}">—</td>
 
                     <td class="text-end">
-                        <form class="d-inline"
+                        <a class="btn btn-sm btn-outline-light"
+                           target="_blank"
+                           th:href="@{/ui/transfer-requests/{id}/pdf(id=${r.id})}">
+                            PDF
+                        </a>
+
+                        <form class="d-inline ms-2"
                               method="post"
                               th:action="@{/ui/transfer-requests/{id}/approve(id=${r.id})}">
                             <button class="btn btn-sm btn-success" type="submit">Approve</button>
