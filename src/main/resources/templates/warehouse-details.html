@@ -24,7 +24,6 @@
                 + Add Products
             </a>
 
-
             <a class="btn btn-outline-light" th:href="@{/ui}">← Back</a>
         </div>
     </div>
@@ -57,6 +56,64 @@
                     <td th:text="${sb.itemType.catalogNumber}">CAT</td>
                     <td th:text="${sb.itemType.name}">NAME</td>
                     <td th:text="${sb.quantity}">0</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SERIALIZED ITEMS TABLE -->
+    <div class="glass-card p-4 mt-4">
+        <h5 class="mb-3">Serialized Items</h5>
+
+        <div th:if="${#lists.isEmpty(items)}" class="text-muted">No serialized items.</div>
+
+        <div class="table-responsive" th:if="${!#lists.isEmpty(items)}">
+            <table class="table table-dark table-hover align-middle">
+                <thead>
+                <tr>
+                    <th>Serial</th>
+                    <th>Product</th>
+                    <th>Location</th>
+                    <th>Status</th>
+                    <th>Signed By</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                <tr th:each="it : ${items}">
+                    <td th:text="${it.serialNumber}">SN-001</td>
+                    <td th:text="${it.itemType.name}">ItemType</td>
+                    <td th:text="${it.location}">Shelf A</td>
+                    <td>
+                        <span class="badge bg-secondary" th:text="${it.status}">SIGNED</span>
+                    </td>
+                    <td th:text="${it.signedBy != null ? it.signedBy.fullName : '—'}">—</td>
+
+                    <td class="text-end">
+
+                        <!-- SIGN TO ME: only when IN_STOCK -->
+                        <form th:if="${it.status.name() == 'IN_STOCK'}"
+                              th:action="@{/ui/items/{id}/sign(id=${it.id})}"
+                              method="post"
+                              style="display:inline;">
+                            <button class="btn btn-sm btn-success" type="submit">Sign to me</button>
+                        </form>
+
+                        <!-- REQUEST TRANSFER: only when SIGNED -->
+                        <a class="btn btn-sm btn-warning"
+                           th:if="${it.status.name() == 'SIGNED'}"
+                           th:href="@{/ui/items/{id}/transfer-request(id=${it.id})}">
+                            Request Transfer
+                        </a>
+
+                        <!-- TRANSFER PENDING -->
+                        <span class="badge bg-info text-dark"
+                              th:if="${it.status.name() == 'TRANSFER_PENDING'}">
+                            Transfer Pending
+                        </span>
+                    </td>
                 </tr>
                 </tbody>
             </table>

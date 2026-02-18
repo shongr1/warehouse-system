@@ -1,24 +1,55 @@
-body.dashboard-page {
-    margin: 0;
+/* =========================
+   Warehouse System - Dark Glass UI (Clean)
+   Replace whole dashboard.css with this
+   ========================= */
+
+:root{
+    --bg0:#050913;
+    --bg1:#0a1226;
+
+    --card: rgba(16, 23, 45, 0.82);
+    --cardBorder: rgba(255,255,255,0.10);
+
+    --text: rgba(255,255,255,0.92);
+    --muted: rgba(255,255,255,0.72);
+    --muted2: rgba(255,255,255,0.58);
+
+    --line: rgba(255,255,255,0.10);
+
+    --primary1:#7c5cff;
+    --primary2:#4f9bff;
+    --cyan:#35d3ff;
+
+    --shadow: 0 30px 80px rgba(0,0,0,.55);
+}
+
+/* ===== Page ===== */
+body.dashboard-page{
+    margin:0;
     background:
-        radial-gradient(circle at 85% 75%, rgba(0, 180, 255, 0.25), transparent 40%),
-        radial-gradient(circle at 20% 0%, rgba(140, 0, 255, 0.3), transparent 40%),
-        linear-gradient(180deg, #0a1226 0%, #050913 100%);
-    font-family: 'Inter', sans-serif;
-    color: #fff;
+            radial-gradient(circle at 85% 75%, rgba(0, 180, 255, 0.25), transparent 40%),
+            radial-gradient(circle at 20% 0%, rgba(140, 0, 255, 0.30), transparent 40%),
+            linear-gradient(180deg, var(--bg1) 0%, var(--bg0) 100%);
+    font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    color: var(--text);
 }
 
-/* Container */
-.dashboard-container {
-    max-width: 1500px;
+/* ===== Readability fixes (this is what you asked for) ===== */
+body.dashboard-page .text-muted{
+    color: var(--muted) !important;
+}
+body.dashboard-page .small,
+body.dashboard-page small{
+    font-size: 0.92rem;       /* bigger than bootstrap small */
+    line-height: 1.25rem;
+    letter-spacing: 0.2px;
+}
+body.dashboard-page .fw-semibold{
+    letter-spacing: 0.1px;
 }
 
-/* Hero */
-.hero-section {
-    padding: 30px 0;
-}
-
-.hero-title {
+/* ===== Hero title (optional class) ===== */
+.hero-title{
     font-size: 42px;
     font-weight: 800;
     background: linear-gradient(90deg, #9d7bff, #49b6ff);
@@ -26,292 +57,273 @@ body.dashboard-page {
     -webkit-text-fill-color: transparent;
 }
 
-/* Glass Card */
-.glass-card {
-    background: rgba(24, 32, 65, 0.55);
-    border: 1px solid rgba(255,255,255,0.08);
-    backdrop-filter: blur(14px);
-    border-radius: 20px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.45);
-    padding: 25px;
-    margin-bottom: 25px;
+/* ===== Glass Card (ONE definition only) ===== */
+.glass-card,
+body.dashboard-page .card{
+    background: var(--card) !important;
+    border: 1px solid var(--cardBorder) !important;
+    backdrop-filter: blur(18px);
+    border-radius: 22px !important;
+    box-shadow: var(--shadow);
+    color: var(--text) !important;
+}
+body.dashboard-page .glass-card .card-body,
+body.dashboard-page .glass-card .card-header,
+body.dashboard-page .glass-card .card-footer,
+body.dashboard-page .card .card-body,
+body.dashboard-page .card .card-header,
+body.dashboard-page .card .card-footer{
+    background: transparent !important;
+    color: var(--text) !important;
 }
 
-/* Section title */
-.section-title {
-    font-size: 24px;
-    font-weight: 700;
-}
-
-/* Inputs */
-.form-control,
-.form-select {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: white;
-}
-
-.form-control:focus,
-.form-select:focus {
-    background: rgba(255,255,255,0.08);
-    border-color: #6c8bff;
-    box-shadow: 0 0 0 0.2rem rgba(108,139,255,.25);
-}
-
-/* Primary button */
-.btn-primary {
-    background: linear-gradient(135deg, #7c5cff, #4f9bff);
-    border: none;
-    border-radius: 14px;
-    padding: 10px 20px;
-}
-
-.btn-primary:hover {
-    opacity: 0.95;
-}
-
-/* Table */
-.table-dark-custom {
-    background: transparent;
-    color: #fff;
-}
-
-.table-dark-custom thead {
-    color: rgba(255,255,255,.6);
-    border-bottom: 1px solid rgba(255,255,255,.1);
-}
-
-.table-dark-custom tbody tr {
-    transition: background .2s ease;
-}
-
-.table-dark-custom tbody tr:hover {
-    background: rgba(255,255,255,0.05);
-}
-
-/* Quantity pill */
-.quantity-pill {
-    background: linear-gradient(90deg, #7c5cff, #5f7dff);
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-weight: 600;
-    display: inline-block;
-}
-
-/* Serialized badge */
-.serialized-badge {
-    background: rgba(0,255,255,0.15);
-    color: #35d3ff;
-    padding: 3px 8px;
-    border-radius: 10px;
-    font-size: 12px;
-    margin-left: 8px;
-}
-/* =========================
-   DARK FIXES: dropdowns + table head
-   Paste at END of dashboard.css
-   ========================= */
-
-/* Native <select> dropdown options (Chrome/Edge) */
-body.dashboard-page select option {
-    background: #0b1020 !important;
-    color: #ffffff !important;
-}
-
-/* Bootstrap / general form controls */
+/* ===== Inputs ===== */
 body.dashboard-page .form-control,
-body.dashboard-page .form-select {
-    background: rgba(255,255,255,0.06) !important;
-    border: 1px solid rgba(255,255,255,0.12) !important;
-    color: rgba(255,255,255,0.92) !important;
+body.dashboard-page .form-select{
+    background: rgba(255,255,255,0.07) !important;
+    border: 1px solid rgba(255,255,255,0.14) !important;
+    color: var(--text) !important;
+    border-radius: 14px !important;
 }
-
-body.dashboard-page .form-control::placeholder {
+body.dashboard-page .form-control::placeholder{
     color: rgba(255,255,255,0.45) !important;
 }
-
 body.dashboard-page .form-control:focus,
-body.dashboard-page .form-select:focus {
-    background: rgba(255,255,255,0.08) !important;
-    border-color: rgba(124,92,255,0.7) !important;
-    box-shadow: 0 0 0 .2rem rgba(124,92,255,0.20) !important;
+body.dashboard-page .form-select:focus{
+    background: rgba(255,255,255,0.09) !important;
+    border-color: rgba(124,92,255,0.75) !important;
+    box-shadow: 0 0 0 .2rem rgba(124,92,255,0.22) !important;
 }
 
-/* TomSelect dropdown (the product search) */
-body.dashboard-page .ts-control,
-body.dashboard-page .ts-dropdown,
-body.dashboard-page .ts-dropdown .option,
-body.dashboard-page .ts-dropdown .optgroup-header {
+/* Native <select> options */
+body.dashboard-page select option{
     background: #0b1020 !important;
-    color: rgba(255,255,255,0.92) !important;
-    border-color: rgba(255,255,255,0.12) !important;
-}
-
-body.dashboard-page .ts-control {
-    border-radius: 14px !important;
-}
-
-body.dashboard-page .ts-dropdown {
-    border-radius: 14px !important;
-    overflow: hidden;
-    box-shadow: 0 18px 60px rgba(0,0,0,.55) !important;
-}
-
-body.dashboard-page .ts-dropdown .option:hover,
-body.dashboard-page .ts-dropdown .active {
-    background: rgba(124,92,255,0.22) !important;
     color: #fff !important;
 }
 
-body.dashboard-page .ts-dropdown .selected {
-    background: rgba(53,211,255,0.18) !important;
-    color: #fff !important;
+/* ===== Buttons ===== */
+body.dashboard-page .btn{
+    border-radius: 14px !important;
+}
+body.dashboard-page .btn-primary{
+    background: linear-gradient(135deg, var(--primary1), var(--primary2)) !important;
+    border: none !important;
+    padding: 10px 18px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.25);
+}
+body.dashboard-page .btn-primary:hover{
+    filter: brightness(1.05);
+}
+body.dashboard-page .btn-outline-light{
+    border-color: rgba(255,255,255,0.30) !important;
+    color: rgba(255,255,255,0.90) !important;
+}
+body.dashboard-page .btn-outline-light:hover{
+    background: rgba(255,255,255,0.08) !important;
+}
+body.dashboard-page .btn-warning{
+    border: none !important;
+    color: #10101a !important;
+    box-shadow: 0 18px 50px rgba(0,0,0,.35);
+}
+body.dashboard-page .btn-outline-danger{
+    border-color: rgba(255, 60, 60, 0.55) !important;
+    color: rgba(255, 120, 120, 0.95) !important;
+}
+body.dashboard-page .btn-outline-danger:hover{
+    background: rgba(255, 60, 60, 0.10) !important;
 }
 
-/* Fix "white bar" table header (Bootstrap table-light) */
+/* ===== Tables (dark premium) ===== */
+body.dashboard-page table.table{
+    color: var(--text) !important;
+}
+body.dashboard-page table.table th,
+body.dashboard-page table.table td{
+    border-color: rgba(255,255,255,0.10) !important;
+}
+body.dashboard-page table.table thead th{
+    color: rgba(255,255,255,0.75) !important;
+    background: rgba(255,255,255,0.03) !important;
+}
+body.dashboard-page table.table tbody tr:hover{
+    background: rgba(255,255,255,0.05) !important;
+}
+
+/* Fix bootstrap "white bar" */
 body.dashboard-page .table-light,
 body.dashboard-page thead.table-light,
-body.dashboard-page .table > :not(caption) > * > * {
+body.dashboard-page .table > :not(caption) > * > *{
     background: transparent !important;
     color: rgba(255,255,255,0.75) !important;
     border-color: rgba(255,255,255,0.10) !important;
 }
 
-/* Your dark table look (works for normal .table too) */
-body.dashboard-page table.table {
-    color: rgba(255,255,255,0.92) !important;
+/* ===== List group (Dashboard warehouses list) ===== */
+body.dashboard-page .list-group-item{
+    border-color: rgba(255,255,255,0.10) !important;
 }
-
-body.dashboard-page table.table tbody tr:hover {
-    background: rgba(255,255,255,0.05) !important;
-}
-
-body.dashboard-page table.table td,
-body.dashboard-page table.table th {
-    border-color: rgba(255,255,255,0.08) !important;
-}
-
-/* Make the "Warehouse Stock" header row not white */
-body.dashboard-page #stockTable thead tr {
+body.dashboard-page .list-group-item:hover{
     background: rgba(255,255,255,0.04) !important;
 }
-/* ============================
-   DARK GLASS MODAL THEME
-   ============================ */
 
-body.dashboard-page .modal-content {
+/* ===== Pills / Badges ===== */
+.quantity-pill{
+    background: linear-gradient(90deg, var(--primary1), #5f7dff);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 700;
+    display: inline-block;
+}
+.serialized-badge{
+    background: rgba(0,255,255,0.12);
+    color: var(--cyan);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    margin-left: 8px;
+    border: 1px solid rgba(53,211,255,0.22);
+}
+
+/* ===== Modal ===== */
+body.dashboard-page .modal-content{
     background: rgba(16, 23, 45, 0.95) !important;
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
     color: #fff !important;
-    border-radius: 20px !important;
+    border-radius: 22px !important;
     box-shadow: 0 30px 80px rgba(0,0,0,0.6);
 }
-
-body.dashboard-page .modal-header {
-    border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+body.dashboard-page .modal-header,
+body.dashboard-page .modal-footer{
+    border-color: rgba(255,255,255,0.10) !important;
 }
-
-body.dashboard-page .modal-footer {
-    border-top: 1px solid rgba(255,255,255,0.08) !important;
-}
-
-body.dashboard-page .modal-title {
+body.dashboard-page .modal-title{
     color: #fff !important;
 }
-
-body.dashboard-page .modal-content .form-label {
-    color: rgba(255,255,255,0.85) !important;
-}
-
-body.dashboard-page .modal-content .form-control,
-body.dashboard-page .modal-content .form-select {
-    background: rgba(255,255,255,0.06) !important;
-    border: 1px solid rgba(255,255,255,0.12) !important;
-    color: #fff !important;
-}
-
-body.dashboard-page .modal-content .form-control::placeholder {
-    color: rgba(255,255,255,0.45) !important;
-}
-
-body.dashboard-page .btn-close {
+body.dashboard-page .btn-close{
     filter: invert(1);
 }
-
-body.dashboard-page .modal-backdrop.show {
+body.dashboard-page .modal-backdrop.show{
     opacity: 0.85;
     backdrop-filter: blur(4px);
 }
-/* ===== Glass Card (use instead of default .card) ===== */
-body.dashboard-page .glass-card {
-    background: rgba(16, 23, 45, 0.82) !important;
-    border: 1px solid rgba(255,255,255,0.10) !important;
-    backdrop-filter: blur(18px);
-    border-radius: 22px !important;
-    box-shadow: 0 30px 80px rgba(0,0,0,.55);
-    color: #fff !important;
-}
 
-body.dashboard-page .glass-card .card-body,
-body.dashboard-page .glass-card .card-header,
-body.dashboard-page .glass-card .card-footer {
-    background: transparent !important;
-    color: #fff !important;
-}
-
-/* Safety: if any bootstrap card sneaks in */
-body.dashboard-page .card {
-    background: rgba(16, 23, 45, 0.82) !important;
-    border: 1px solid rgba(255,255,255,0.10) !important;
-    color: #fff !important;
-}
-
-body.dashboard-page .card .card-body {
-    background: transparent !important;
-}
-
-/* Inputs inside cards */
-body.dashboard-page .glass-card .form-control,
-body.dashboard-page .glass-card .form-select {
-    background: rgba(255,255,255,0.07) !important;
-    border: 1px solid rgba(255,255,255,0.14) !important;
-    color: #fff !important;
-}
-/* =========================
-   TomSelect dropdown FIX
-   (dropdown getting clipped/hidden)
-   ========================= */
-
-/* 1) Allow dropdown to escape cards/containers */
+/* ===== TomSelect dropdown (keep above everything) ===== */
 body.dashboard-page .glass-card,
 body.dashboard-page .card,
 body.dashboard-page .card-body,
 body.dashboard-page .container,
-body.dashboard-page .table-responsive {
+body.dashboard-page .table-responsive{
     overflow: visible !important;
 }
-
-/* 2) Make sure TomSelect dropdown is above everything */
+body.dashboard-page .ts-control,
 body.dashboard-page .ts-dropdown,
-body.dashboard-page .ts-dropdown.single,
-body.dashboard-page .ts-wrapper,
-body.dashboard-page .ts-control {
-    z-index: 9999 !important;
+body.dashboard-page .ts-dropdown .option,
+body.dashboard-page .ts-dropdown .optgroup-header{
+    background: #0b1020 !important;
+    color: rgba(255,255,255,0.92) !important;
+    border-color: rgba(255,255,255,0.12) !important;
 }
-
-/* 3) If any parent creates stacking context, reduce issues */
-body.dashboard-page .glass-card {
-    position: relative;
-    z-index: 1;
+body.dashboard-page .ts-control{
+    border-radius: 14px !important;
 }
-
-/* 4) Prevent the dropdown from being cut off height-wise */
-body.dashboard-page .ts-dropdown {
+body.dashboard-page .ts-dropdown{
+    border-radius: 14px !important;
+    overflow: hidden;
+    box-shadow: 0 18px 60px rgba(0,0,0,.55) !important;
     max-height: 320px !important;
     overflow-y: auto !important;
-}
-/* TomSelect dropdown rendered in <body> */
-body.dashboard-page .ts-dropdown {
     z-index: 20000 !important;
 }
+body.dashboard-page .ts-dropdown .option:hover,
+body.dashboard-page .ts-dropdown .active{
+    background: rgba(124,92,255,0.22) !important;
+    color: #fff !important;
+}
+body.dashboard-page .ts-dropdown .selected{
+    background: rgba(53,211,255,0.18) !important;
+    color: #fff !important;
+}
+
+/* ===== Small polish ===== */
+body.dashboard-page a{
+    text-decoration: none;
+}
+body.dashboard-page .btn,
+body.dashboard-page .glass-card,
+body.dashboard-page .form-control,
+body.dashboard-page .form-select{
+    transition: all .18s ease;
+}
+/* =========================
+   FINAL READABILITY OVERRIDE
+   ========================= */
+
+/* Bootstrap 5.3 uses variables for muted/secondary text */
+body.dashboard-page{
+    --bs-body-color: rgba(255,255,255,0.92);
+    --bs-secondary-color: rgba(255,255,255,0.80);
+    --bs-tertiary-color: rgba(255,255,255,0.70);
+}
+
+/* Force muted/helper text to be visible */
+body.dashboard-page .text-muted,
+body.dashboard-page .text-secondary,
+body.dashboard-page .text-body-secondary{
+    color: rgba(255,255,255,0.80) !important;
+    opacity: 1 !important;
+}
+
+/* Make small text readable */
+body.dashboard-page small,
+body.dashboard-page .small{
+    color: rgba(255,255,255,0.86) !important;
+    font-size: 0.96rem !important;
+    line-height: 1.28rem !important;
+    opacity: 1 !important;
+}
+
+/* Tables */
+body.dashboard-page .table thead th{
+    color: rgba(255,255,255,0.88) !important;
+}
+body.dashboard-page .table td{
+    color: rgba(255,255,255,0.95) !important;
+}
+/* =========================
+   FINAL READABILITY OVERRIDE
+   ========================= */
+
+/* Bootstrap 5.3 uses variables for muted/secondary text */
+body.dashboard-page{
+    --bs-body-color: rgba(255,255,255,0.92);
+    --bs-secondary-color: rgba(255,255,255,0.80);
+    --bs-tertiary-color: rgba(255,255,255,0.70);
+}
+
+/* Force muted/helper text to be visible */
+body.dashboard-page .text-muted,
+body.dashboard-page .text-secondary,
+body.dashboard-page .text-body-secondary{
+    color: rgba(255,255,255,0.80) !important;
+    opacity: 1 !important;
+}
+
+/* Make small text readable */
+body.dashboard-page small,
+body.dashboard-page .small{
+    color: rgba(255,255,255,0.86) !important;
+    font-size: 0.96rem !important;
+    line-height: 1.28rem !important;
+    opacity: 1 !important;
+}
+
+/* Tables */
+body.dashboard-page .table thead th{
+    color: rgba(255,255,255,0.88) !important;
+}
+body.dashboard-page .table td{
+    color: rgba(255,255,255,0.95) !important;
+}
+

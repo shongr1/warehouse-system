@@ -1,16 +1,28 @@
 package com.warehouse.system.controller;
 
+
+import com.lowagie.text.*;
+import com.lowagie.text.Font;
+import com.lowagie.text.pdf.*;
+import com.warehouse.system.pdf.PdfFonts;
+
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+
+import java.awt.*;
+import java.io.ByteArrayOutputStream;
+import java.time.format.DateTimeFormatter;
+
+
 import com.warehouse.system.dto.CreateItemTypeForm;
 import com.warehouse.system.dto.CreateManagerForm;
 import com.warehouse.system.dto.CreateWarehouseForm;
 import com.warehouse.system.dto.StockForm;
 import com.warehouse.system.dto.WarehouseDto;
-import com.warehouse.system.entity.ItemType;
-import com.warehouse.system.entity.StockBalance;
-import com.warehouse.system.entity.User;
-import com.warehouse.system.entity.UserRole;
-import com.warehouse.system.entity.Warehouse;
+import com.warehouse.system.entity.*;
 import com.warehouse.system.repository.*;
+import com.warehouse.system.service.TransferService;
 import com.warehouse.system.ui.AuthController;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +30,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import com.warehouse.system.repository.TransferRequestRepository;
+
 
 import java.util.List;
 import java.util.Map;
@@ -30,20 +44,27 @@ public class UiController {
     private final ItemTypeRepository itemTypeRepository;
     private final StockBalanceRepository stockBalanceRepository;
     private final ItemRepository itemRepository;
+    private final TransferRequestRepository transferRequestRepository;
+    private final TransferService transferService;
 
     public UiController(
             WarehouseRepository warehouseRepository,
             UserRepository userRepository,
             ItemTypeRepository itemTypeRepository,
             StockBalanceRepository stockBalanceRepository,
-            ItemRepository itemRepository
+            ItemRepository itemRepository,
+            TransferRequestRepository transferRequestRepository,
+            TransferService transferService
     ) {
         this.warehouseRepository = warehouseRepository;
         this.userRepository = userRepository;
         this.itemTypeRepository = itemTypeRepository;
         this.stockBalanceRepository = stockBalanceRepository;
         this.itemRepository = itemRepository;
+        this.transferRequestRepository = transferRequestRepository;
+        this.transferService = transferService;
     }
+
 
     // ---------- HOME ----------
     @GetMapping("/ui")
@@ -266,6 +287,7 @@ public class UiController {
     }
 
     // ---------- WAREHOUSE DETAILS ----------
+    // ---------- WAREHOUSE DETAILS ----------
     @GetMapping("/ui/warehouses/{id}")
     public String warehouseDetails(@PathVariable Long id, HttpSession session, Model model) {
 
@@ -286,8 +308,12 @@ public class UiController {
         model.addAttribute("warehouse", warehouse);
         model.addAttribute("stocks", stockBalanceRepository.findByWarehouseId(id));
 
+        // ✅ NEW: bring serialized items to the page
+        model.addAttribute("items", itemRepository.findByWarehouseId(id));
+
         return "warehouse-details";
     }
+
 
     /**  @GetMapping("/ui/warehouses/view")
     public String viewWarehouseStock(@RequestParam Long id, HttpSession session, Model model) {
@@ -421,6 +447,187 @@ public class UiController {
         model.addAttribute("warehousesCount", warehouses.size());
 
         return "admin-dashboard";
+    }
+    @PostMapping("/ui/items/{id}/sign")
+    public String signItemToMe(@PathVariable Long id,
+                               @RequestHeader(value = "Referer", required = false) String referer,
+                               HttpSession session) {
+
+        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
+
+        String pn = AuthController.currentPn(session);
+        transferService.signToMe(id, pn);
+
+        return "redirect:" + (referer != null ? referer : "/ui");
+    }
+    /**
+    @PostMapping("/ui/items/{id}/transfer-request")
+    public String submitTransferRequest(@PathVariable Long id,
+                                        @RequestParam String toPersonalNumber,
+                                        @RequestParam(required = false) String note,
+                                        HttpSession session,
+                                        @RequestHeader(value = "Referer", required = false) String referer) {
+
+        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
+
+        String fromPn = AuthController.currentPn(session);
+
+        transferService.createTransferRequest(id, fromPn, toPersonalNumber, note);
+
+        return "redirect:" + (referer != null ? referer : "/ui");
+    }
+**/
+    @GetMapping("/ui/my-transfer-requests")
+    public String myTransferRequests(HttpSession session, Model model) {
+
+        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
+
+        String pn = AuthController.currentPn(session);
+
+        var me = userRepository.findByPersonalNumber(pn)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        var requests = transferRequestRepository.findByToUserIdAndStatus(me.getId(), TransferStatus.PENDING);
+
+        model.addAttribute("requests", requests);
+
+        return "my-transfer-requests";
+    }
+    @PostMapping("/ui/transfer-requests/{id}/approve")
+    public String approveTransfer(@PathVariable Long id, HttpSession session) {
+        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
+
+        String pn = AuthController.currentPn(session);
+        transferService.approve(id, pn);
+
+        return "redirect:/ui/my-transfer-requests";
+    }
+
+    @PostMapping("/ui/transfer-requests/{id}/reject")
+    public String rejectTransfer(@PathVariable Long id, HttpSession session) {
+        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
+
+        String pn = AuthController.currentPn(session);
+        transferService.reject(id, pn);
+
+        return "redirect:/ui/my-transfer-requests";
+    }
+    @GetMapping("/ui/my-signed-items")
+    public String mySignedItems(HttpSession session, Model model) {
+        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
+
+        String pn = AuthController.currentPn(session);
+        var me = userRepository.findByPersonalNumber(pn)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        model.addAttribute("items", itemRepository.findBySignedBy_Id(me.getId()));
+        return "my-signed-items";
+    }
+    /**
+    @GetMapping("/ui/my-transfer-requests/pdf")
+    public ResponseEntity<byte[]> exportIncomingTransfersPdf(HttpSession session) {
+        if (!AuthController.isLoggedIn(session)) {
+            return ResponseEntity.status(401).build();
+        }
+        String pn = AuthController.currentPn(session);
+
+        var me = userRepository.findByPersonalNumber(pn)
+                .orElseThrow(() -> new RuntimeException("User not found: " + pn));
+
+        var requests = transferRequestRepository
+                .findAllByToUserIdAndStatusOrderByCreatedAtDesc(me.getId(), TransferStatus.PENDING);
+
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+            Document doc = new Document(PageSize.A4.rotate(), 28, 28, 26, 26);
+            PdfWriter writer = PdfWriter.getInstance(doc, baos);
+            doc.open();
+
+            BaseFont bf = PdfFonts.hebrewBaseFont();
+            Font titleFont = new Font(bf, 18, Font.BOLD);
+            Font normal = new Font(bf, 11, Font.NORMAL);
+            Font bold = new Font(bf, 11, Font.BOLD);
+
+            // כותרת
+            Paragraph title = new Paragraph("טופס העברת חתימה - בקשות נכנסות", titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            doc.add(title);
+
+            doc.add(new Paragraph(" ", normal));
+
+            Paragraph meta = new Paragraph(
+                    "מקבל: " + me.getFullName() + "  |  מספר אישי: " + me.getPersonalNumber(),
+                    normal
+            );
+            meta.setAlignment(Element.ALIGN_CENTER);
+            doc.add(meta);
+
+            doc.add(new Paragraph(" ", normal));
+
+            // טבלה
+            PdfPTable table = new PdfPTable(new float[]{1.2f, 2.2f, 3.2f, 2.2f, 3.5f, 2.6f});
+            table.setWidthPercentage(100);
+            table.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+
+            addHeader(table, "מס׳ בקשה", bold);
+            addHeader(table, "סטטוס", bold);
+            addHeader(table, "פריט", bold);
+            addHeader(table, "סיריאל", bold);
+            addHeader(table, "הערה", bold);
+            addHeader(table, "תאריך", bold);
+
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+            for (var tr : requests) {
+                // מביאים פריט כדי להוציא שם+סיריאל
+                var item = itemRepository.findById(tr.getItemId()).orElse(null);
+
+                String itemName = (item == null || item.getItemType() == null) ? "-" : item.getItemType().getName();
+                String serial = (item == null) ? "-" : item.getSerialNumber();
+
+                addCell(table, String.valueOf(tr.getId()), normal);
+                addCell(table, String.valueOf(tr.getStatus()), normal);
+                addCell(table, itemName, normal);
+                addCell(table, serial, normal);
+                addCell(table, tr.getNote() == null ? "" : tr.getNote(), normal);
+                addCell(table, tr.getCreatedAt() == null ? "" : tr.getCreatedAt().format(fmt), normal);
+            }
+
+            doc.add(table);
+
+            doc.add(new Paragraph(" ", normal));
+            doc.add(new Paragraph("חתימת מקבל: ____________________    תאריך: ________________", normal));
+            doc.add(new Paragraph("חתימת מוסר: ____________________    תאריך: ________________", normal));
+
+            doc.close();
+            writer.close();
+
+            byte[] pdfBytes = baos.toByteArray();
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=incoming-transfer-requests.pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdfBytes);
+
+        } catch (Exception e) {
+            throw new RuntimeException("PDF export failed", e);
+        }
+    }
+**/
+    private static void addHeader(PdfPTable t, String text, Font f) {
+        PdfPCell c = new PdfPCell(new Phrase(text, f));
+        c.setPadding(8);
+        c.setBackgroundColor(new Color(30, 35, 55));
+        c.setBorderColor(new Color(255,255,255,25));
+        t.addCell(c);
+    }
+
+    private static void addCell(PdfPTable t, String text, Font f) {
+        PdfPCell c = new PdfPCell(new Phrase(text, f));
+        c.setPadding(8);
+        c.setBorderColor(new Color(255,255,255,25));
+        t.addCell(c);
     }
 
 }
