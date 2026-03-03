@@ -15,7 +15,10 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
     boolean existsByItemType_IdAndSerialNumber(Long itemTypeId, String serialNumber);
 
     // --- שאילתות שליפה (Queries) ---
+    List<Item> findByCategoryId(Long categoryId);
 
+    // בונוס: מוצאת את כל הפריטים במחסן מסוים שעדיין אין להם קטגוריה
+    List<Item> findByWarehouseIdAndCategoryIsNull(Long warehouseId);
     // מציאת כל הפריטים במחסן מסוים
     List<Item> findByWarehouseId(Long warehouseId);
 

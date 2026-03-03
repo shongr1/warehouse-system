@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title th:text="${warehouse.name}">Warehouse Details</title>
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/dashboard.css}">
 
@@ -12,185 +11,206 @@
         .rotate-icon[aria-expanded="true"] { transform: rotate(90deg); }
         .main-row:hover { background: rgba(255,255,255,0.05) !important; }
         .collapse-row { background: rgba(0,0,0,0.15); border-left: 4px solid #0d6efd; }
-        .component-input { max-width: 80px; }
-        .status-select { max-width: 130px; font-size: 0.85rem; }
         .badge-kit { font-size: 0.6rem; vertical-align: middle; }
-        .transfer-input { max-width: 120px; background: rgba(255,255,255,0.1) !important; border-color: rgba(255,255,255,0.2) !important; color: white !important; }
-        .transfer-input::placeholder { color: rgba(255,255,255,0.5); font-size: 0.75rem; }
+
+        .category-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            min-width: 160px;
+            text-decoration: none !important;
+        }
+        .category-card:hover { background: rgba(255, 255, 255, 0.1); transform: translateY(-5px); }
+        .category-card.active {
+            background: rgba(13, 110, 253, 0.2) !important;
+            border-color: #0d6efd !important;
+        }
+        .count-circle { font-size: 1.8rem; font-weight: 800; color: #0dcaf0; }
+        #inventory-display-area { display: none; }
+        .glass-card { background: rgba(255, 255, 255, 0.05); border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); }
     </style>
 </head>
 
 <body class="dashboard-page">
 <div class="container py-5">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+        <strong th:text="${error}">Error</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+        <strong th:text="${success}">Success</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
             <h2 class="fw-bold mb-1" th:text="${warehouse.name}">Warehouse</h2>
             <div class="text-muted small">
                 <span th:text="${warehouse.location}">Location</span>
                 <span class="mx-2">•</span>
-                <a th:href="@{/ui/warehouses/{id}(id=${warehouse.id})}" class="text-info text-decoration-none">Refresh Data</a>
+                <a th:href="@{/ui/warehouses/{id}(id=${warehouse.id})}" class="text-info text-decoration-none">Refresh Page</a>
             </div>
         </div>
-
         <div class="d-flex gap-2">
-            <a class="btn btn-primary shadow-sm" th:href="@{/ui/warehouses/{id}/add(id=${warehouse.id})}">
-                + Add Products
-            </a>
-            <a class="btn btn-outline-light" th:href="@{/ui}">← Dashboard</a>
+            <button class="btn btn-outline-info px-4" data-bs-toggle="modal" data-bs-target="#addCategoryModal">+ New Category</button>
+            <a class="btn btn-outline-light px-4" th:href="@{/ui}">← Dashboard</a>
         </div>
     </div>
 
-    <div class="glass-card p-4 mb-4">
-        <h5 class="mb-3">Stock Levels Summary</h5>
-        <div class="table-responsive">
-            <table class="table table-dark table-sm mb-0">
-                <thead>
-                <tr>
-                    <th>Catalog Number</th>
-                    <th>Product Name</th>
-                    <th class="text-center">Total Quantity</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="sb : ${stocks}">
-                    <td th:text="${sb.itemType.catalogNumber}" class="text-info">CAT</td>
-                    <td th:text="${sb.itemType.name}">NAME</td>
-                    <td th:text="${sb.quantity}" class="text-center fw-bold">0</td>
-                </tr>
-                </tbody>
-            </table>
+    <div class="mb-5">
+        <h6 class="text-uppercase text-muted fw-bold mb-4 small">Categories</h6>
+        <div class="nav nav-pills d-flex flex-wrap gap-3" id="pills-tab" role="tablist">
+            <div th:each="entry, stat : ${inventoryMap}" class="nav-item" role="presentation">
+                <div class="category-card p-4 text-center nav-link"
+                     th:id="'tab-' + ${stat.index}"
+                     data-bs-toggle="pill"
+                     th:data-bs-target="'#pane-' + ${stat.index}"
+                     role="tab"
+                     onclick="showInventory()">
+                    <div class="count-circle" th:text="${#lists.size(entry.value)}">0</div>
+                    <div class="fw-bold text-white mt-2" th:text="${entry.key}">Category</div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="glass-card p-4">
-        <h5 class="mb-3">Inventory Details</h5>
+    <div id="inventory-display-area" class="glass-card p-4 shadow-lg">
+        <div class="tab-content" id="pills-tabContent">
+            <div th:each="entry, stat : ${inventoryMap}" class="tab-pane fade" th:id="'pane-' + ${stat.index}" role="tabpanel">
 
-        <div th:if="${#lists.isEmpty(items)}" class="text-muted p-3 text-center">
-            No items currently in stock for this warehouse.
-        </div>
+                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
+                    <h5 class="fw-bold mb-0">Items in <span class="text-info" th:text="${entry.key}">Category</span></h5>
+                    <a class="btn btn-primary btn-sm px-3" th:href="@{/ui/warehouses/{id}/add(id=${warehouse.id}, cat=${entry.key})}">+ Add Item</a>
+                </div>
 
-        <div class="table-responsive" th:if="${!#lists.isEmpty(items)}">
-            <table class="table table-dark align-middle mb-0">
-                <thead>
-                <tr>
-                    <th style="width: 45px;"></th>
-                    <th>Serial Number</th>
-                    <th>Product</th>
-                    <th>Status</th>
-                    <th>Signed By</th>
-                    <th class="text-end">Actions</th>
-                </tr>
-                </thead>
+                <div class="table-responsive">
+                    <table class="table table-dark align-middle mb-0">
+                        <thead>
+                        <tr class="text-muted border-secondary">
+                            <th style="width: 45px;"></th>
+                            <th>Serial Number</th>
+                            <th>Product</th>
+                            <th>Quantity</th>
+                            <th>Status</th>
+                            <th>Signed By</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <th:block th:each="it : ${entry.value}">
+                            <tr class="main-row border-bottom-0">
+                                <td>
+                                    <button th:if="${it.item.itemType.kit}" class="btn btn-sm text-white rotate-icon border-0 shadow-none"
+                                            type="button" data-bs-toggle="collapse" th:attr="data-bs-target='#kit' + ${it.item.id}">▶</button>
+                                </td>
+                                <td>
+                                    <span class="fw-bold text-info" th:text="${it.item.serialNumber != null ? it.item.serialNumber : 'Bulk'}">SN</span>
+                                    <span th:if="${it.item.itemType.kit}" class="badge bg-primary ms-1 badge-kit">KIT</span>
+                                </td>
+                                <td th:text="${it.item.itemType.name}">Product</td>
+                                <td><span class="badge bg-info text-dark fw-bold" th:text="${it.count}">1</span></td>
+                                <td>
+            <span class="badge" th:classappend="${it.item.status.name() == 'IN_STOCK' ? 'bg-success' : 'bg-secondary'}"
+                  th:text="${it.item.status}">STATUS</span>
+                                </td>
+                                <td th:text="${it.item.signedBy != null ? it.item.signedBy.fullName : '—'}">—</td>
 
-                <th:block th:each="it : ${items}">
-                    <tbody>
-                    <tr class="main-row border-bottom-0">
-                        <td>
-                            <button th:if="${it.itemType.kit}"
-                                    class="btn btn-sm text-white rotate-icon border-0 shadow-none"
-                                    type="button"
-                                    data-bs-toggle="collapse"
-                                    th:attr="data-bs-target='#kit' + ${it.id}">
-                                ▶
-                            </button>
-                        </td>
-                        <td>
-                            <span class="fw-bold text-info" th:text="${it.serialNumber}">SN-001</span>
-                            <span th:if="${it.itemType.kit}" class="badge bg-primary ms-1 badge-kit">KIT</span>
-                        </td>
-                        <td th:text="${it.itemType.name}">Product Name</td>
-                        <td>
-                            <span class="badge"
-                                  th:classappend="${it.status.name() == 'IN_STOCK' ? 'bg-success' : 'bg-secondary'}"
-                                  th:text="${it.status}">STATUS</span>
-                        </td>
-                        <td th:text="${it.signedBy != null ? it.signedBy.fullName : '—'}">—</td>
-                        <td class="text-end">
-                            <div class="d-flex gap-2 justify-content-end align-items-center">
+                                <td class="text-end">
+                                    <div class="d-flex justify-content-end align-items-center gap-2">
 
-                                <form th:if="${it.status.name() == 'IN_STOCK'}"
-                                      th:action="@{/ui/items/{id}/sign(id=${it.id})}" method="post">
-                                    <button class="btn btn-sm btn-outline-success" type="submit">Sign to me</button>
-                                </form>
+                                        <form th:if="${it.item.status.name() == 'IN_STOCK'}" th:action="@{/ui/items/sign-bulk}" method="post" class="d-flex gap-1">
+                                            <input type="hidden" name="itemTypeId" th:value="${it.item.itemType.id}">
+                                            <input type="hidden" name="warehouseId" th:value="${warehouse.id}">
+                                            <input type="number" name="quantity" value="1" min="1" th:max="${it.count}" class="form-control form-control-sm bg-dark text-white border-secondary" style="width: 60px;">
+                                            <button class="btn btn-sm btn-outline-success" type="submit">Sign</button>
+                                        </form>
 
-                                <th:block th:if="${it.status.name() == 'SIGNED' and it.signedBy?.id == me?.id}">
+                                        <form th:if="${it.item.status.name() == 'SIGNED' and it.item.signedBy != null and it.item.signedBy.personalNumber != session.user.personalNumber}"
+                                              th:action="@{/ui/items/transfer-bulk}" method="post">
+                                            <input type="hidden" name="itemTypeId" th:value="${it.item.itemType.id}">
+                                            <input type="hidden" name="warehouseId" th:value="${warehouse.id}">
+                                            <input type="hidden" name="fromUserId" th:value="${it.item.signedBy.id}">
+                                            <input type="hidden" name="quantity" th:value="${it.count}">
+                                            <button class="btn btn-sm btn-outline-warning" type="submit">Take All</button>
+                                        </form>
 
-                                    <form th:action="@{/ui/items/{id}/transfer-request(id=${it.id})}" method="post" class="d-flex gap-1">
-                                        <input type="text" name="toPersonalNumber"
-                                               class="form-control form-control-sm transfer-input"
-                                               placeholder="Personal #" required>
-                                        <input type="hidden" name="note" value="Direct warehouse transfer">
-                                        <button class="btn btn-sm btn-outline-primary" type="submit">Transfer</button>
-                                    </form>
+                                        <div th:if="${it.item.status.name() == 'SIGNED' and it.item.signedBy != null and it.item.signedBy.personalNumber == session.user.personalNumber}" class="d-flex gap-1">
+                                            <span class="badge bg-primary d-flex align-items-center me-1">Mine</span>
+                                            <form th:action="@{/ui/items/{id}/transfer-request(id=${it.item.id})}" method="post" class="d-flex gap-1">
+                                                <input type="hidden" name="itemTypeId" th:value="${it.item.itemType.id}">
+                                                <input type="hidden" name="warehouseId" th:value="${warehouse.id}">
+                                                <input type="hidden" name="note" value="Warehouse Transfer">
 
-                                    <form th:action="@{/ui/items/{id}/unsign(id=${it.id})}" method="post">
-                                        <button class="btn btn-sm btn-outline-danger" type="submit">Unsign</button>
-                                    </form>
-                                </th:block>
+                                                <input type="number" name="quantity" th:value="${it.count}" min="1" th:max="${it.count}"
+                                                       class="form-control form-control-sm bg-dark text-white border-secondary" style="width: 55px;">
 
-                            </div>
-                        </td>
-                    </tr>
+                                                <input type="text" name="toPersonalNumber" class="form-control form-control-sm bg-dark text-white border-secondary"
+                                                       placeholder="Target PN" style="width: 90px;" required>
 
-                    <tr th:if="${it.itemType.kit}" class="collapse-row">
-                        <td colspan="6" class="p-0 border-0">
-                            <div class="collapse" th:id="'kit' + ${it.id}">
-                                <div class="p-4 bg-black bg-opacity-25">
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <h6 class="text-info small fw-bold mb-0 text-uppercase">Kit Contents & Quality Check</h6>
-                                    </div>
-
-                                    <table class="table table-sm table-dark table-hover mb-0">
-                                        <thead>
-                                        <tr class="text-muted small border-secondary">
-                                            <th>Component Name</th>
-                                            <th>Sub-Catalog</th>
-                                            <th style="width: 100px;">Actual Qty</th>
-                                            <th>Expected</th>
-                                            <th>Current Status</th>
-                                            <th class="text-end">Update</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        <tr th:each="row : ${kitChecklist[it.id]}" class="border-secondary border-opacity-25">
-                                            <td th:text="${row.componentName}">Component</td>
-                                            <td th:text="${row.subCatalogNumber}" class="text-muted">Sub-001</td>
-
-                                            <form th:action="@{/ui/kit-checklist/{rowId}/update(rowId=${row.id})}" method="post">
-                                                <td>
-                                                    <input type="number" name="actualQty"
-                                                           class="form-control form-control-sm bg-dark text-white border-secondary component-input"
-                                                           th:value="${row.actualQty}" min="0">
-                                                </td>
-                                                <td th:text="${row.expectedQty}" class="fw-bold">1</td>
-                                                <td>
-                                                    <select name="status" class="form-select form-select-sm bg-dark text-white border-secondary status-select">
-                                                        <option th:each="s : ${T(com.warehouse.system.entity.KitComponentStatus).values()}"
-                                                                th:value="${s}"
-                                                                th:text="${s}"
-                                                                th:selected="${s == row.status}">
-                                                        </option>
-                                                    </select>
-                                                </td>
-                                                <td class="text-end">
-                                                    <button type="submit" class="btn btn-sm btn-primary px-3">Save</button>
-                                                </td>
+                                                <button class="btn btn-sm btn-warning" type="submit">Transfer</button>
                                             </form>
-                                        </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    </tbody>
-                </th:block>
-            </table>
+                                        </div>
+
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr th:if="${it.item.itemType.kit}" class="collapse-row collapse" th:id="'kit' + ${it.item.id}">
+                                <td colspan="7">
+                                    <div class="p-3">
+                                        <ul class="list-unstyled mb-0">
+                                            <li th:each="comp : ${kitChecklist[it.item.id]}" class="small text-muted mb-1">
+                                                • <span th:text="${comp.componentName}">Component</span>:
+                                                <span class="text-white" th:text="${comp.actualQty}">0</span>/<span th:text="${comp.expectedQty}">1</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                        </th:block>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-white border-secondary">
+            <form th:action="@{/ui/categories/add}" method="post">
+                <input type="hidden" name="warehouseId" th:value="${warehouse.id}">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Create New Category</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Category Name</label>
+                        <input type="text" name="name" class="form-control bg-dark text-white border-secondary" placeholder="e.g. Optics, Radios" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-info">Save Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showInventory() {
+        document.getElementById('inventory-display-area').style.display = 'block';
+        setTimeout(() => {
+            document.getElementById('inventory-display-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+    }
+</script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

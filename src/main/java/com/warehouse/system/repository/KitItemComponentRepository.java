@@ -10,4 +10,5 @@ public interface KitItemComponentRepository extends JpaRepository<KitItemCompone
     List<KitItemComponent> findByKitItem_Id(Long kitItemId);
     List<KitItemComponent> findByKitItem_IdOrderByKitComponent_Id(Long kitItemId);
     boolean existsByKitItem_Id(Long kitItemId);
+    List<KitItemComponent> findAllByKitItem_IdIn(List<Long> itemIds);
 }

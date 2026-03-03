@@ -5,6 +5,26 @@
     <title th:text="'Add Products • ' + ${warehouse.name}">Add Products</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/dashboard.css}">
+    <style>
+        /* עיצוב לבאמר הקטגוריה הנבחרת */
+        .selected-category-banner {
+            background: rgba(13, 202, 240, 0.15);
+            border: 1px solid rgba(13, 202, 240, 0.3);
+            border-radius: 12px;
+            padding: 12px 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .category-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #0dcaf0;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #0dcaf0;
+        }
+    </style>
 </head>
 
 <body class="dashboard-page">
@@ -28,27 +48,34 @@
         </div>
     </div>
 
+    <div th:if="${selectedCategoryName != null}" class="selected-category-banner">
+        <div class="category-dot"></div>
+        <span>Adding items directly to: <b class="text-info" th:text="${selectedCategoryName}">Category</b></span>
+    </div>
+
     <div class="glass-card p-4 mb-4">
         <h5 class="mb-2">How it works</h5>
-        <div class="text-muted">
+        <div class="text-muted small">
             Choose an <b>Item Type</b>. If it is <b>Serialized</b>, select AUTO or MANUAL serial input.
-            Otherwise, just enter quantity.
+            The items will be automatically assigned to the category shown above.
         </div>
     </div>
 
     <div class="glass-card p-4 mb-4">
         <div class="d-flex align-items-center justify-content-between mb-3">
-            <h5 class="mb-0">Add Inventory</h5>
+            <h5 class="mb-0 text-primary">Add Inventory</h5>
         </div>
 
         <form method="post" th:action="@{/ui/stocks}" th:object="${stockForm}">
             <input type="hidden" th:field="*{warehouseId}"/>
 
+            <input type="hidden" name="categoryName" th:value="${selectedCategoryName}"/>
+
             <div class="row g-3">
                 <div class="col-12 col-lg-6">
                     <label class="form-label">Item Type</label>
-                    <select class="form-select" th:field="*{itemTypeId}" id="itemTypeId">
-                        <option value="">-- Select --</option>
+                    <select class="form-select" th:field="*{itemTypeId}" id="itemTypeId" required>
+                        <option value="">-- Select Item Type --</option>
                         <option th:each="it : ${itemTypes}"
                                 th:value="${it.id}"
                                 th:text="${it.catalogNumber + ' • ' + it.name + (it.serialized ? ' (Serialized)' : '')}">
@@ -58,59 +85,57 @@
 
                 <div class="col-12 col-lg-3">
                     <label class="form-label">Quantity</label>
-                    <input class="form-control" type="number" min="1" th:field="*{quantity}">
+                    <input class="form-control" type="number" min="1" th:field="*{quantity}" required>
                 </div>
 
                 <div class="col-12 col-lg-3">
                     <label class="form-label">Serial Mode</label>
                     <select class="form-select" th:field="*{serialMode}" id="serialMode">
-                        <option value="AUTO">AUTO</option>
-                        <option value="MANUAL">MANUAL</option>
+                        <option value="AUTO">AUTO (Incremental)</option>
+                        <option value="MANUAL">MANUAL (Text Area)</option>
                     </select>
                 </div>
 
                 <div class="col-12 col-lg-6" id="autoBlock">
-                    <label class="form-label">Start Serial (AUTO)</label>
-                    <input class="form-control" type="text" th:field="*{startSerial}">
+                    <label class="form-label">Start Serial (Number only)</label>
+                    <input class="form-control" type="text" th:field="*{startSerial}" placeholder="e.g. 1000">
                 </div>
 
                 <div class="col-12 col-lg-6" id="manualBlock" style="display:none;">
-                    <label class="form-label">Manual Serials (MANUAL)</label>
-                    <textarea class="form-control" rows="3" th:field="*{manualSerials}"></textarea>
+                    <label class="form-label">Manual Serials (Comma separated)</label>
+                    <textarea class="form-control" rows="3" th:field="*{manualSerials}" placeholder="SN1, SN2, SN3..."></textarea>
                 </div>
 
                 <div class="col-12 col-lg-3 d-flex align-items-end">
-                    <div class="form-check">
+                    <div class="form-check mb-2">
                         <input class="form-check-input" type="checkbox" th:field="*{kit}" id="kitCheck">
-                        <label class="form-check-label" for="kitCheck">Kit Mode Active</label>
+                        <label class="form-check-label fw-bold" for="kitCheck">Kit Mode Active</label>
                     </div>
                 </div>
 
                 <div class="col-12" id="kitComponentsBox" style="display:none;">
-                    <div class="glass-card p-3 mt-2">
-                        <h6>Kit Components (Current Instance)</h6>
-                        <table class="table table-dark align-middle">
+                    <div class="glass-card p-3 mt-2 border-info">
+                        <h6 class="text-info">Kit Components (Current Instance)</h6>
+                        <table class="table table-dark table-sm align-middle">
                             <thead>
                             <tr>
-                                <th>Component Name</th>
+                                <th>Name</th>
                                 <th>Sub Catalog</th>
                                 <th>Qty</th>
-                                <th></th>
+                                <th>Action</th>
                             </tr>
                             </thead>
                             <tbody id="componentsTbody"></tbody>
                         </table>
-                        <button type="button" class="btn btn-sm btn-outline-light" onclick="addComponentRow()">
-                            Add Extra Component
-                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-info" onclick="addComponentRow()">+ Add Component Row</button>
                     </div>
                 </div>
 
                 <div class="col-12" id="kitBox" style="display:none;">
-                    <div class="glass-card p-4 mt-2 border-info">
-                        <h5 class="mb-3 text-info">Default Kit Recipe</h5>
+                    <div class="glass-card p-3 mt-2">
+                        <h6 class="mb-3 text-muted">Default Kit Recipe (Reference Only)</h6>
                         <div class="table-responsive">
-                            <table class="table table-dark table-hover align-middle mb-0">
+                            <table class="table table-dark table-hover table-sm align-middle mb-0">
                                 <thead>
                                 <tr>
                                     <th>Component</th>
@@ -124,8 +149,8 @@
                     </div>
                 </div>
 
-                <div class="col-12 d-flex gap-2 mt-2">
-                    <button class="btn btn-primary" type="submit">+ Add To Stock</button>
+                <div class="col-12 d-flex gap-2 mt-4 pt-3 border-top border-secondary">
+                    <button class="btn btn-primary px-5 shadow" type="submit">+ Add To Stock</button>
                     <a class="btn btn-outline-light" th:href="@{/ui/warehouses/{id}(id=${warehouse.id})}">Cancel</a>
                 </div>
             </div>
@@ -138,12 +163,12 @@
             <input type="hidden" name="warehouseId" th:value="${warehouse.id}"/>
             <div class="row g-3">
                 <div class="col-12 col-lg-3">
-                    <label class="form-label">Catalog Number</label>
-                    <input class="form-control" type="text" th:field="*{catalogNumber}">
+                    <label class="form-label small">Catalog Number</label>
+                    <input class="form-control" type="text" th:field="*{catalogNumber}" required>
                 </div>
                 <div class="col-12 col-lg-4">
-                    <label class="form-label">Name</label>
-                    <input class="form-control" type="text" th:field="*{name}">
+                    <label class="form-label small">Full Name</label>
+                    <input class="form-control" type="text" th:field="*{name}" required>
                 </div>
                 <div class="col-12 col-lg-2 d-flex align-items-end">
                     <div class="form-check mb-2">
@@ -157,6 +182,7 @@
                         <label class="form-check-label" for="isKitTypeCheck">Is Kit?</label>
                     </div>
                 </div>
+
                 <div class="col-12" id="typeComponentsBox" style="display:none;">
                     <div class="glass-card p-3 mt-2 border-secondary">
                         <h6>Define Kit Components (Recipe)</h6>
@@ -174,7 +200,8 @@
                         <button type="button" class="btn btn-sm btn-outline-info" onclick="addTypeComponentRow()">+ Add Row</button>
                     </div>
                 </div>
-                <div class="col-12">
+
+                <div class="col-12 mt-3">
                     <button class="btn btn-outline-light" type="submit">+ Create Item Type</button>
                 </div>
             </div>
@@ -183,7 +210,7 @@
 </div>
 
 <script>
-    // 1. SERIAL MODES
+    // 1. SERIAL MODES TOGGLE
     const serialMode = document.getElementById("serialMode");
     const autoBlock = document.getElementById("autoBlock");
     const manualBlock = document.getElementById("manualBlock");
@@ -205,13 +232,12 @@
     kitCheck.addEventListener("change", () => kitComponentsBox.style.display = kitCheck.checked ? "block" : "none");
     isKitTypeCheck.addEventListener("change", () => typeComponentsBox.style.display = isKitTypeCheck.checked ? "block" : "none");
 
-    // 3. ADD COMPONENTS (STOCK FORM)
+    // 3. ADD COMPONENTS DYNAMICALLY
     let stockCompIndex = 0;
     function addComponentRow(data = null) {
         const tbody = document.getElementById("componentsTbody");
         const tr = document.createElement('tr');
 
-        // וידוא שמות שדות במידה ומגיע אובייקט עם שמות שונים מה-DTO
         const compName = data ? (data.componentName || data.name || '') : '';
         const subCat = data ? (data.subCatalogNumber || data.subCatalog || '') : '';
         const qty = data ? (data.quantity || data.expectedQty || 1) : 1;
@@ -226,7 +252,6 @@
         stockCompIndex++;
     }
 
-    // 4. ADD COMPONENTS (CREATE TYPE FORM)
     let typeCompIndex = 0;
     function addTypeComponentRow() {
         const tbody = document.getElementById("typeComponentsTbody");
@@ -241,14 +266,14 @@
         typeCompIndex++;
     }
 
-    // 5. SMART SELECT: Load data and auto-toggle checkboxes
+    // 4. SMART SELECT: FETCH ITEM TYPE DETAILS
     const itemTypeSelect = document.getElementById('itemTypeId');
     const kitBox = document.getElementById('kitBox');
     const kitTbody = document.getElementById('kitTbody');
 
     async function handleItemTypeChange(itemTypeId) {
         kitTbody.innerHTML = '';
-        document.getElementById("componentsTbody").innerHTML = ''; // Reset instance table
+        document.getElementById("componentsTbody").innerHTML = '';
         stockCompIndex = 0;
 
         if (!itemTypeId) {
@@ -264,24 +289,19 @@
             const data = await res.json();
 
             if (Array.isArray(data) && data.length > 0) {
-                // IT IS A KIT: Auto-enable checkboxes and UI
                 kitCheck.checked = true;
                 kitComponentsBox.style.display = 'block';
                 kitBox.style.display = 'block';
 
                 data.forEach(c => {
-                    // התאמה לשמות השדות מה-KitComponentDto ב-Java (id, name, subCatalog, expectedQty)
                     const displayCompName = c.name || '';
                     const displaySubCat = c.subCatalog || '';
                     const displayQty = c.expectedQty || 0;
 
-                    // Fill Preview Table (Default Kit Recipe)
                     const trPreview = document.createElement('tr');
                     trPreview.innerHTML = `<td>${displayCompName}</td><td>${displaySubCat}</td><td>${displayQty}</td>`;
                     kitTbody.appendChild(trPreview);
 
-                    // Fill Stock Form Table (The actual data to be saved)
-                    // מעביר אובייקט "מנורמל" לפונקציה addComponentRow
                     addComponentRow({
                         componentName: displayCompName,
                         subCatalogNumber: displaySubCat,
@@ -289,7 +309,6 @@
                     });
                 });
             } else {
-                // NOT A KIT
                 kitCheck.checked = false;
                 kitComponentsBox.style.display = 'none';
                 kitBox.style.display = 'none';
