@@ -43,7 +43,7 @@
 
             <div class="field">
                 <label>Product (ItemType)</label>
-                <select th:field="*{itemTypeId}" required>
+                <select id="itemTypeSelect" th:field="*{itemTypeId}" required>
                     <option value="" selected disabled>Choose product...</option>
                     <option th:each="it : ${itemTypes}"
                             th:value="${it.id}"
@@ -85,7 +85,23 @@
             </div>
 
         </div>
+        <div class="divider"></div>
 
+        <div id="kitBox" style="display:none;">
+            <h4>Kit Components</h4>
+            <div class="hint">These are the sub-catalog items of the kit (expected qty). Next step we’ll allow filling actual qty.</div>
+
+            <table style="width:100%; margin-top:10px; border-collapse:collapse;">
+                <thead>
+                <tr>
+                    <th style="text-align:left; padding:8px;">Component</th>
+                    <th style="text-align:left; padding:8px;">Sub Catalog</th>
+                    <th style="text-align:left; padding:8px;">Expected</th>
+                </tr>
+                </thead>
+                <tbody id="kitTbody"></tbody>
+            </table>
+        </div>
         <br/>
         <button type="submit">Add / Increase</button>
 
@@ -95,6 +111,50 @@
         </div>
     </form>
 </div>
+<script>
+    async function loadKitComponents(itemTypeId) {
+      console.log("Fetching components for Item Type ID:", itemTypeId);
 
+      kitTbody.innerHTML = '';
+      kitBox.style.display = 'none';
+
+      if (!itemTypeId) return;
+
+      try {
+          const res = await fetch(`/ui/item-types/${itemTypeId}/kit-components`, {
+              credentials: 'same-origin'
+          });
+
+          if (!res.ok) {
+              console.error("Server error:", res.status);
+              return;
+          }
+
+          const data = await res.json();
+          console.log("Data from Server:", data); // בדוק ב-Console שאתה רואה כאן מערך
+
+          if (!Array.isArray(data) || data.length === 0) {
+              console.log("This item type has no pre-defined kit components in DB.");
+              return;
+          }
+
+          // הצגת התיבה כי נמצאו רכיבים
+          kitBox.style.display = 'block';
+
+          data.forEach(c => {
+              const tr = document.createElement('tr');
+              // שים לב: השמות כאן חייבים להתאים בדיוק ל-KitComponentDto שב-Java
+              tr.innerHTML = `
+                  <td>${c.name || '---'}</td>
+                  <td>${c.subCatalog || '---'}</td>
+                  <td>${c.expectedQty || 0}</td>
+              `;
+              kitTbody.appendChild(tr);
+          });
+      } catch (err) {
+          console.error("Fetch failed:", err);
+      }
+  }
+</script>
 </body>
 </html>

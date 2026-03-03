@@ -37,9 +37,20 @@ public class ItemTransferUiController {
 
         String fromPn = AuthController.currentPn(session);
 
-        transferService.createTransferRequest(itemId, fromPn, form.getToPersonalNumber(), form.getNote());
+        // הדפסות דיבאג - בדוק אותן ב-Console של ה-IntelliJ
+        System.out.println(">>> CREATE TRANSFER REQUEST STARTED");
+        System.out.println(">>> Item ID: " + itemId);
+        System.out.println(">>> From PN (Me): " + fromPn);
+        System.out.println(">>> To PN (Target): '" + form.getToPersonalNumber() + "'");
 
-        ra.addFlashAttribute("success", "Transfer request sent (PENDING).");
-        return "redirect:/ui";
+        try {
+            transferService.createTransferRequest(itemId, fromPn, form.getToPersonalNumber(), form.getNote());
+            ra.addFlashAttribute("success", "בקשת העברה נשלחה בהצלחה.");
+        } catch (Exception e) {
+            System.out.println(">>> ERROR: " + e.getMessage());
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+
+        return "redirect:/ui/my-signed-items";
     }
 }

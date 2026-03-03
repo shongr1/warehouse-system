@@ -1,11 +1,13 @@
 package com.warehouse.system.controller;
 
-
+import java.util.stream.Collectors;
 import com.lowagie.text.*;
 import com.lowagie.text.Font;
 import com.lowagie.text.pdf.*;
+import com.warehouse.system.dto.*;
 import com.warehouse.system.pdf.PdfFonts;
 
+import jakarta.transaction.Transactional;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -14,12 +16,7 @@ import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.time.format.DateTimeFormatter;
 
-
-import com.warehouse.system.dto.CreateItemTypeForm;
-import com.warehouse.system.dto.CreateManagerForm;
-import com.warehouse.system.dto.CreateWarehouseForm;
-import com.warehouse.system.dto.StockForm;
-import com.warehouse.system.dto.WarehouseDto;
+import com.warehouse.system.repository.KitItemComponentRepository;
 import com.warehouse.system.entity.*;
 import com.warehouse.system.repository.*;
 import com.warehouse.system.service.TransferService;
@@ -31,7 +28,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import com.warehouse.system.repository.TransferRequestRepository;
-
 
 import java.util.List;
 import java.util.Map;
@@ -46,6 +42,11 @@ public class UiController {
     private final ItemRepository itemRepository;
     private final TransferRequestRepository transferRequestRepository;
     private final TransferService transferService;
+    private final KitItemComponentRepository kitItemComponentRepository;
+    private final KitComponentRepository kitComponentRepository;
+
+
+
 
     public UiController(
             WarehouseRepository warehouseRepository,
@@ -54,7 +55,9 @@ public class UiController {
             StockBalanceRepository stockBalanceRepository,
             ItemRepository itemRepository,
             TransferRequestRepository transferRequestRepository,
-            TransferService transferService
+            TransferService transferService,
+            KitItemComponentRepository kitItemComponentRepository,
+            KitComponentRepository kitComponentRepository
     ) {
         this.warehouseRepository = warehouseRepository;
         this.userRepository = userRepository;
@@ -63,6 +66,9 @@ public class UiController {
         this.itemRepository = itemRepository;
         this.transferRequestRepository = transferRequestRepository;
         this.transferService = transferService;
+
+        this.kitItemComponentRepository = kitItemComponentRepository;
+        this.kitComponentRepository = kitComponentRepository;
     }
 
 
@@ -119,13 +125,17 @@ public class UiController {
         return "redirect:/ui";
     }
 
-    // ---------- WAREHOUSES ----------
     @GetMapping("/ui/warehouses")
     public String warehouses(HttpSession session, Model model) {
         if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
 
         String pn = AuthController.currentPn(session);
 
+        // שליפת המשתמש המחובר כדי להשתמש ב-ID שלו
+        var me = userRepository.findByPersonalNumber(pn)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // שליפת המחסנים שבבעלותי (הקוד הקיים שלך)
         List<WarehouseDto> warehouses = warehouseRepository.findAllByOwner_PersonalNumber(pn)
                 .stream()
                 .map(w -> new WarehouseDto(
@@ -142,7 +152,13 @@ public class UiController {
                 ))
                 .toList();
 
+        // --- השורה החדשה והקריטית ---
+        // אנחנו שולפים את כל הבקשות שמוענות אליי (toUser) ובסטטוס ממתין
+        var incomingRequests = transferRequestRepository.findByToUserIdAndStatus(me.getId(), TransferStatus.PENDING);
+
         model.addAttribute("warehouses", warehouses);
+        model.addAttribute("incomingRequests", incomingRequests); // מוסיפים למודל עבור ה-HTML
+
         return "warehouses";
     }
 
@@ -191,20 +207,16 @@ public class UiController {
 
         return "manager-warehouses";
     }
-
-    // ---------- STOCK ----------
+    @Transactional
     @PostMapping("/ui/stocks")
     public String createStock(StockForm form, HttpSession session) {
         if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
 
         String pn = AuthController.currentPn(session);
-
         var warehouse = warehouseRepository.findById(form.getWarehouseId())
                 .orElseThrow(() -> new RuntimeException("Warehouse not found"));
 
-        // ✅ SECURITY: compare trimmed values
-        String ownerPn = warehouse.getOwner() == null ? null : warehouse.getOwner().getPersonalNumber();
-        ownerPn = ownerPn == null ? null : ownerPn.trim();
+        String ownerPn = warehouse.getOwner() != null ? warehouse.getOwner().getPersonalNumber().trim() : null;
         if (ownerPn == null || !pn.equals(ownerPn)) {
             throw new RuntimeException("Forbidden: this warehouse is not yours");
         }
@@ -212,46 +224,76 @@ public class UiController {
         var itemType = itemTypeRepository.findById(form.getItemTypeId())
                 .orElseThrow(() -> new RuntimeException("ItemType not found"));
 
-        int addQty;
+        if (form.isKit() && !itemType.isKit()) {
+            itemType.setKit(true);
+            itemTypeRepository.save(itemType);
+        }
+
+        int addQty = 0;
 
         if (itemType.isSerialized()) {
-            var serials = parseSerials(form);
+            List<String> serials = parseSerials(form).stream()
+                    .distinct()
+                    .collect(Collectors.toList());
+
             addQty = serials.size();
 
             for (String sn : serials) {
-                if (itemRepository.existsByItemType_IdAndSerialNumber(itemType.getId(), sn)) {
-                    throw new RuntimeException("Serial already exists: " + sn);
+                if (itemRepository.existsBySerialNumber(sn)) {
+                    throw new RuntimeException("Error: Serial number " + sn + " already exists!");
                 }
 
-                var item = new com.warehouse.system.entity.Item();
+                Item item = new Item();
                 item.setWarehouse(warehouse);
                 item.setItemType(itemType);
                 item.setSerialNumber(sn);
+                item.setStatus(ItemStatus.IN_STOCK);
 
-                itemRepository.save(item);
+                // שמירת הפריט הראשי
+                Item savedItem = itemRepository.save(item);
+
+                // יצירת רכיבי הקיט
+                if (itemType.isKit()) {
+                    var components = kitComponentRepository.findByKitType_Id(itemType.getId());
+                    for (var c : components) {
+                        KitItemComponent row = new KitItemComponent();
+                        row.setKitItem(savedItem);
+
+                        // ✅ התיקון הקריטי: חייבים לקשר לרכיב המקורי (ה-ID שחסר ב-DB)
+                        row.setKitComponent(c);
+
+                        row.setComponentName(c.getComponentName());
+                        row.setSubCatalogNumber(c.getSubCatalogNumber());
+                        row.setExpectedQty(c.getQuantity());
+                        row.setActualQty(0);
+                        row.setStatus(KitComponentStatus.MISSING);
+
+                        kitItemComponentRepository.save(row);
+                    }
+                }
             }
         } else {
             addQty = form.getQuantity();
         }
 
-        var existing = stockBalanceRepository.findByWarehouseIdAndItemTypeId(warehouse.getId(), itemType.getId());
-
-        if (existing.isPresent()) {
-            var sb = existing.get();
-            sb.setQuantity(sb.getQuantity() + addQty);
-            stockBalanceRepository.save(sb);
-        } else {
-            var sb = new StockBalance();
-            sb.setWarehouse(warehouse);
-            sb.setItemType(itemType);
-            sb.setQuantity(addQty);
-            stockBalanceRepository.save(sb);
-        }
-
-        // ✅ Redirect back to warehouse details (NOT /add)
+        updateStockBalance(warehouse, itemType, addQty);
         return "redirect:/ui/warehouses/" + form.getWarehouseId();
     }
 
+    // פונקציית עזר לעדכון המלאי הכללי - שומרת על ה-Controller נקי
+    private void updateStockBalance(Warehouse warehouse, ItemType itemType, int addQty) {
+        var sb = stockBalanceRepository.findByWarehouseIdAndItemTypeId(warehouse.getId(), itemType.getId())
+                .orElseGet(() -> {
+                    StockBalance newSb = new StockBalance();
+                    newSb.setWarehouse(warehouse);
+                    newSb.setItemType(itemType);
+                    newSb.setQuantity(0);
+                    return newSb;
+                });
+
+        sb.setQuantity(sb.getQuantity() + addQty);
+        stockBalanceRepository.save(sb);
+    }
 
     private List<String> parseSerials(StockForm form) {
         String mode = (form.getSerialMode() == null || form.getSerialMode().isBlank()) ? "AUTO" : form.getSerialMode();
@@ -287,34 +329,48 @@ public class UiController {
     }
 
     // ---------- WAREHOUSE DETAILS ----------
-    // ---------- WAREHOUSE DETAILS ----------
     @GetMapping("/ui/warehouses/{id}")
     public String warehouseDetails(@PathVariable Long id, HttpSession session, Model model) {
-
+        // 1. בדיקה אם המשתמש מחובר בכלל
         if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
 
-        String pn = AuthController.currentPn(session);
+        // 2. שליפת המשתמש המחובר מהסשן (באמצעות העזר שבנינו ב-AuthController)
+        var me = AuthController.currentUser(session);
 
-        var warehouse = warehouseRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Warehouse not found"));
+        // הגנה נוספת: אם משום מה ה-User אבד אבל ה-PN קיים (למקרה של סשן ישן)
+        if (me == null) {
+            String pn = AuthController.currentPn(session);
+            if (pn != null) {
+                me = userRepository.findByPersonalNumber(pn).orElse(null);
+                session.setAttribute("user", me); // עדכון הסשן בזמן אמת
+            }
+        }
 
-        String ownerPn = warehouse.getOwner() == null ? null : warehouse.getOwner().getPersonalNumber();
-        ownerPn = ownerPn == null ? null : ownerPn.trim();
+        // 3. הזרקת המשתמש ל-Model כדי שה-HTML יזהה את me
+        model.addAttribute("me", me);
 
-        if (ownerPn == null || !pn.equals(ownerPn)) {
-            throw new RuntimeException("Forbidden: this warehouse is not yours");
+        // הדפסה ללוג לבדיקה (תוכל למחוק אחרי שזה עובד)
+        System.out.println(">>> DEBUG: Current User (me): " + (me != null ? me.getFullName() : "NULL"));
+
+        // 4. טעינת נתוני המחסן והפריטים
+        var warehouse = warehouseRepository.findById(id).orElseThrow();
+        var allItems = itemRepository.findByWarehouseId(id);
+        var kitChecklist = new java.util.HashMap<Long, java.util.List<KitItemComponent>>();
+
+        for (var it : allItems) {
+            if (it.getItemType().isKit()) {
+                var rows = kitItemComponentRepository.findByKitItem_IdOrderByKitComponent_Id(it.getId());
+                kitChecklist.put(it.getId(), rows);
+            }
         }
 
         model.addAttribute("warehouse", warehouse);
+        model.addAttribute("items", allItems);
+        model.addAttribute("kitChecklist", kitChecklist);
         model.addAttribute("stocks", stockBalanceRepository.findByWarehouseId(id));
-
-        // ✅ NEW: bring serialized items to the page
-        model.addAttribute("items", itemRepository.findByWarehouseId(id));
 
         return "warehouse-details";
     }
-
-
     /**  @GetMapping("/ui/warehouses/view")
     public String viewWarehouseStock(@RequestParam Long id, HttpSession session, Model model) {
         if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
@@ -345,7 +401,20 @@ public class UiController {
         it.setCatalogNumber(form.getCatalogNumber());
         it.setName(form.getName());
         it.setSerialized(form.isSerialized());
-        itemTypeRepository.save(it);
+
+        // --- הוספה עבור ערכות (Kits) ---
+        it.setKit(form.isKit()); // וודא שב-Form יש שדה כזה
+
+        if (form.isKit() && form.getComponents() != null) {
+            for (KitComponent comp : form.getComponents()) {
+                // שימוש במתודת ה-Helper שהגדרת ב-Entity (addComponent)
+                // היא זו שקושרת את ה-comp ל-it (האבא)
+                it.addComponent(comp);
+            }
+        }
+        // -------------------------------
+
+        itemTypeRepository.save(it); // בזכות CascadeType.ALL, זה ישמור גם את הרכיבים
 
         return "redirect:/ui/warehouses/" + warehouseId + "/add";
     }
@@ -460,23 +529,7 @@ public class UiController {
 
         return "redirect:" + (referer != null ? referer : "/ui");
     }
-    /**
-    @PostMapping("/ui/items/{id}/transfer-request")
-    public String submitTransferRequest(@PathVariable Long id,
-                                        @RequestParam String toPersonalNumber,
-                                        @RequestParam(required = false) String note,
-                                        HttpSession session,
-                                        @RequestHeader(value = "Referer", required = false) String referer) {
 
-        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
-
-        String fromPn = AuthController.currentPn(session);
-
-        transferService.createTransferRequest(id, fromPn, toPersonalNumber, note);
-
-        return "redirect:" + (referer != null ? referer : "/ui");
-    }
-**/
     @GetMapping("/ui/my-transfer-requests")
     public String myTransferRequests(HttpSession session, Model model) {
 
@@ -520,7 +573,13 @@ public class UiController {
         var me = userRepository.findByPersonalNumber(pn)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        model.addAttribute("items", itemRepository.findBySignedBy_Id(me.getId()));
+        // הפיכת ה-Entities ל-DTOs עם הלוגיקה של חישוב הימים
+        List<ItemDto> dtos = itemRepository.findBySignedBy_Id(me.getId())
+                .stream()
+                .map(ItemDto::fromEntity) // וודא שהגדרת את המתודה הזו ב-ItemDto
+                .toList();
+
+        model.addAttribute("items", dtos);
         return "my-signed-items";
     }
     /**
@@ -615,6 +674,27 @@ public class UiController {
         }
     }
 **/
+    @GetMapping("/ui/item-types/{id}/kit-components")
+    @ResponseBody
+    public ResponseEntity<?> kitComponents(@PathVariable Long id, HttpSession session) {
+        if (!AuthController.isLoggedIn(session)) {
+            return ResponseEntity.status(401).body("Not logged in");
+        }
+
+        var list = kitComponentRepository.findByKitType_Id(id);
+
+        // הכי נקי: DTO ולא Map (מונע גם את השגיאת generics שהייתה לך)
+        var out = list.stream().map(c -> new KitComponentDto(
+                c.getId(),
+                c.getComponentName(),
+                c.getSubCatalogNumber(),
+                c.getQuantity()
+        )).toList();
+
+        return ResponseEntity.ok(out);
+    }
+
+    public record KitComponentDto(Long id, String name, String subCatalog, int expectedQty) {}
     private static void addHeader(PdfPTable t, String text, Font f) {
         PdfPCell c = new PdfPCell(new Phrase(text, f));
         c.setPadding(8);
@@ -629,5 +709,99 @@ public class UiController {
         c.setBorderColor(new Color(255,255,255,25));
         t.addCell(c);
     }
+    @GetMapping("/ui/item-types/{id}/kit-components/manage")
+    public String manageKitComponents(@PathVariable Long id,
+                                      HttpSession session,
+                                      Model model) {
 
+        if (!AuthController.isLoggedIn(session))
+            return "redirect:/ui/login";
+
+        var itemType = itemTypeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("ItemType not found"));
+
+        if (!itemType.isKit())
+            throw new RuntimeException("Not a KIT");
+
+        model.addAttribute("kitType", itemType);
+        model.addAttribute("components",
+                kitComponentRepository.findByKitType_Id(id));
+
+        return "kit-components-manage";
+    }
+    @PostMapping("/ui/item-types/{id}/kit-components")
+    public String addKitComponent(@PathVariable Long id,
+                                  @RequestParam String componentName,
+                                  @RequestParam String subCatalogNumber,
+                                  @RequestParam int quantity,
+                                  HttpSession session) {
+
+        if (!AuthController.isLoggedIn(session))
+            return "redirect:/ui/login";
+
+        var kitType = itemTypeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("ItemType not found"));
+
+        KitComponent kc = new KitComponent();
+        kc.setKitType(kitType);
+        kc.setComponentName(componentName.trim());
+        kc.setSubCatalogNumber(subCatalogNumber.trim());
+        kc.setQuantity(quantity);
+
+        kitComponentRepository.save(kc);
+
+        return "redirect:/ui/item-types/" + id + "/kit-components/manage";
+    }
+    @PostMapping("/ui/kit-components/{id}/delete")
+    public String deleteKitComponent(@PathVariable Long id,
+                                     HttpSession session) {
+
+        if (!AuthController.isLoggedIn(session))
+            return "redirect:/ui/login";
+
+        var kc = kitComponentRepository.findById(id)
+                .orElseThrow();
+
+        Long kitId = kc.getKitType().getId();
+
+        kitComponentRepository.delete(kc);
+
+        return "redirect:/ui/item-types/" + kitId + "/kit-components/manage";
+    }
+    @PostMapping("/ui/kit-checklist/{rowId}/update")
+    public String updateKitChecklistRow(@PathVariable Long rowId,
+                                        @RequestParam int actualQty,
+                                        @RequestHeader(value = "Referer", required = false) String referer) {
+
+        var row = kitItemComponentRepository.findById(rowId)
+                .orElseThrow(() -> new RuntimeException("Checklist row not found"));
+
+        row.setActualQty(actualQty);
+
+        // התאמה ל-Enum שלך: OK, MISSING, DAMAGED
+        if (actualQty >= row.getExpectedQty()) {
+            row.setStatus(KitComponentStatus.OK);
+        } else {
+            row.setStatus(KitComponentStatus.MISSING);
+        }
+
+        kitItemComponentRepository.save(row);
+
+        return "redirect:" + (referer != null ? referer : "/ui");
+
+    }
+    @PostMapping("/ui/items/{id}/unsign")
+    public String unsignItem(@PathVariable Long id, HttpSession session) {
+        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
+
+        var item = itemRepository.findById(id).orElseThrow();
+
+        // החזרת הסטטוס למלאי ומחיקת המשתמש החתום
+        item.setStatus(com.warehouse.system.entity.ItemStatus.IN_STOCK);
+        item.setSignedBy(null);
+        itemRepository.save(item);
+
+        // חזרה למחסן שבו היינו
+        return "redirect:/ui/warehouses/" + item.getWarehouse().getId();
+    }
 }

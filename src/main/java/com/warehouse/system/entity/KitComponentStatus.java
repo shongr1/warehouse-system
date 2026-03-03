@@ -1,4 +1,5 @@
 package com.warehouse.system.entity;
 
-public class KitComponentStatus {
+public enum KitComponentStatus {
+    OK, MISSING, DAMAGED
 }

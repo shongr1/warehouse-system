@@ -9,52 +9,36 @@ public class StockForm {
     private String startSerial;
     private String manualSerials;
 
-    public Long getWarehouseId() {
-        return warehouseId;
+    // הוסיפי את השדה הזה:
+    private boolean kit;
+
+    // --- Getters & Setters הקיימים ---
+
+    public Long getWarehouseId() { return warehouseId; }
+    public void setWarehouseId(Long warehouseId) { this.warehouseId = warehouseId; }
+
+    public Long getItemTypeId() { return itemTypeId; }
+    public void setItemTypeId(Long itemTypeId) { this.itemTypeId = itemTypeId; }
+
+    public Integer getQuantity() { return quantity; }
+    public void setQuantity(Integer quantity) { this.quantity = quantity; }
+
+    public String getSerialMode() { return serialMode; }
+    public void setSerialMode(String serialMode) { this.serialMode = serialMode; }
+
+    public String getStartSerial() { return startSerial; }
+    public void setStartSerial(String startSerial) { this.startSerial = startSerial; }
+
+    public String getManualSerials() { return manualSerials; }
+    public void setManualSerials(String manualSerials) { this.manualSerials = manualSerials; }
+
+    // --- הוסיפי את ה-Getter וה-Setter עבור kit ---
+
+    public boolean isKit() {
+        return kit;
     }
 
-    public void setWarehouseId(Long warehouseId) {
-        this.warehouseId = warehouseId;
-    }
-
-    public Long getItemTypeId() {
-        return itemTypeId;
-    }
-
-    public void setItemTypeId(Long itemTypeId) {
-        this.itemTypeId = itemTypeId;
-    }
-
-    public Integer getQuantity() {
-        return quantity;
-    }
-
-    public void setQuantity(Integer quantity) {
-        this.quantity = quantity;
-    }
-
-    public String getSerialMode() {
-        return serialMode;
-    }
-
-    public void setSerialMode(String serialMode) {
-        this.serialMode = serialMode;
-    }
-
-    public String getStartSerial() {
-        return startSerial;
-    }
-
-    public void setStartSerial(String startSerial) {
-        this.startSerial = startSerial;
-    }
-
-    public String getManualSerials() {
-        return manualSerials;
-    }
-
-    public void setManualSerials(String manualSerials) {
-        this.manualSerials = manualSerials;
+    public void setKit(boolean kit) {
+        this.kit = kit;
     }
 }
-

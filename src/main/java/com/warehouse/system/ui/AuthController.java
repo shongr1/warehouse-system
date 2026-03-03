@@ -1,5 +1,6 @@
 package com.warehouse.system.ui;
 
+import com.warehouse.system.entity.User;
 import com.warehouse.system.entity.UserRole;
 import com.warehouse.system.repository.UserRepository;
 import jakarta.servlet.http.HttpSession;
@@ -13,6 +14,7 @@ public class AuthController {
 
     public static final String SESSION_PN = "SESSION_PN";
     public static final String SESSION_ROLE = "SESSION_ROLE";
+    public static final String SESSION_USER = "user"; // המפתח שבו נשתמש לשליפת המשתמש
 
     private final UserRepository userRepository;
 
@@ -37,8 +39,13 @@ public class AuthController {
         }
 
         var user = userOpt.get();
+
+        // שמירת הנתונים בסשן
         session.setAttribute(SESSION_PN, user.getPersonalNumber());
         session.setAttribute(SESSION_ROLE, user.getRole().name());
+
+        // --- עדכון קריטי: שמירת אובייקט המשתמש המלא ---
+        session.setAttribute(SESSION_USER, user);
 
         return "redirect:/ui";
     }
@@ -50,20 +57,24 @@ public class AuthController {
     }
 
     // helpers
+
+    // שליפת המשתמש הנוכחי מהסשן
+    public static User currentUser(HttpSession session) {
+        return (User) session.getAttribute(SESSION_USER);
+    }
+
     public static String currentPn(HttpSession session) {
         return (String) session.getAttribute(SESSION_PN);
     }
 
     public static boolean isLoggedIn(HttpSession session) {
-        String pn = currentPn(session);
-        return pn != null && !pn.isBlank();
+        return session.getAttribute(SESSION_USER) != null;
     }
 
     public static boolean isAdmin(HttpSession session) {
         String role = (String) session.getAttribute(SESSION_ROLE);
         return UserRole.ADMIN.name().equals(role);
     }
-
 
     public static void requireLogin(HttpSession session) {
         if (!isLoggedIn(session)) {

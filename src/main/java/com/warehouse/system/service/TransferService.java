@@ -14,17 +14,21 @@ public class TransferService {
     private final UserRepository userRepository;
     private final TransferRequestRepository transferRequestRepository;
 
-    public TransferService(ItemRepository itemRepository,
-                           UserRepository userRepository,
-                           TransferRequestRepository transferRequestRepository) {
+    public TransferService(
+            ItemRepository itemRepository,
+            TransferRequestRepository transferRequestRepository,
+            UserRepository userRepository
+    ) {
         this.itemRepository = itemRepository;
-        this.userRepository = userRepository;
         this.transferRequestRepository = transferRequestRepository;
+        this.userRepository = userRepository;
     }
 
+    /**
+     * חתימה ראשונית על פריט מהמחסן (ממצב IN_STOCK)
+     */
     @Transactional
     public void signToMe(Long itemId, String pn) {
-
         var me = userRepository.findByPersonalNumber(pn.trim())
                 .orElseThrow(() -> new RuntimeException("User not found: " + pn));
 
@@ -35,44 +39,44 @@ public class TransferService {
             throw new RuntimeException("Item must be IN_STOCK to sign");
         }
 
+        // הגדרת חתימה
         item.setSignedBy(me);
         item.setStatus(ItemStatus.SIGNED);
+
+        // קביעת תוקף חתימה לשנה אחת בדיוק
+        LocalDateTime now = LocalDateTime.now();
+        item.setSignatureDate(now);
+        item.setSignatureExpiryDate(now.plusYears(1));
 
         itemRepository.save(item);
     }
 
+    /**
+     * יצירת בקשת העברה (או בקשת זיכוי למחסן)
+     */
     @Transactional
     public void createTransferRequest(Long itemId, String fromPn, String toPn, String note) {
-
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("Item not found"));
 
-        // ✅ NEW: אם כבר בתהליך - לא מאפשרים ליצור עוד בקשה
+        // הגנות לוגיות
         if (item.getStatus() == ItemStatus.TRANSFER_PENDING) {
-            throw new RuntimeException("Item is already in TRANSFER_PENDING");
+            throw new RuntimeException("Item is already in a transfer process");
         }
 
         if (item.getStatus() != ItemStatus.SIGNED) {
-            throw new RuntimeException("Item must be SIGNED to request transfer");
+            throw new RuntimeException("Only SIGNED items can be transferred/returned");
         }
 
-        if (item.getSignedBy() == null || item.getSignedBy().getPersonalNumber() == null ||
-                !fromPn.equals(item.getSignedBy().getPersonalNumber().trim())) {
-            throw new RuntimeException("You are not the signer of this item");
-        }
-
-        if (toPn == null || toPn.isBlank()) {
-            throw new RuntimeException("Target personal number is required");
+        // וידוי שהשולח הוא אכן החתום על הפריט
+        if (item.getSignedBy() == null || !fromPn.equals(item.getSignedBy().getPersonalNumber().trim())) {
+            throw new RuntimeException("You are not authorized to transfer this item");
         }
 
         var toUser = userRepository.findByPersonalNumber(toPn.trim())
                 .orElseThrow(() -> new RuntimeException("Target user not found: " + toPn));
 
-        // ✅ NEW: אם כבר יש בקשה פתוחה - חוסם
-        if (transferRequestRepository.existsByItemIdAndStatus(itemId, TransferStatus.PENDING)) {
-            throw new RuntimeException("There is already a PENDING request for this item");
-        }
-
+        // יצירת הבקשה
         TransferRequest tr = new TransferRequest();
         tr.setItemId(itemId);
         tr.setFromUserId(item.getSignedBy().getId());
@@ -83,61 +87,64 @@ public class TransferService {
 
         transferRequestRepository.save(tr);
 
-        // ✅ NEW: משנה סטטוס כך שה-UI יראה "Pending" ולא יאפשר שוב
+        // נעילת הפריט לשינויים עד האישור
         item.setStatus(ItemStatus.TRANSFER_PENDING);
         itemRepository.save(item);
     }
+
+    /**
+     * אישור הבקשה - כאן מתבצע הזיכוי או ההעברה בפועל
+     */
     @Transactional
     public void approve(Long transferRequestId, String approverPn) {
-
         var me = userRepository.findByPersonalNumber(approverPn.trim())
                 .orElseThrow(() -> new RuntimeException("User not found: " + approverPn));
 
         var tr = transferRequestRepository.findById(transferRequestId)
-                .orElseThrow(() -> new RuntimeException("TransferRequest not found: " + transferRequestId));
+                .orElseThrow(() -> new RuntimeException("TransferRequest not found"));
 
         if (tr.getStatus() != TransferStatus.PENDING) {
-            throw new RuntimeException("Request is not PENDING");
-        }
-
-        if (!me.getId().equals(tr.getToUserId())) {
-            throw new RuntimeException("Forbidden: not your request");
+            throw new RuntimeException("Request is no longer pending");
         }
 
         var item = itemRepository.findById(tr.getItemId())
-                .orElseThrow(() -> new RuntimeException("Item not found: " + tr.getItemId()));
+                .orElseThrow(() -> new RuntimeException("Item not found"));
 
-        // להעביר חתימה
-        item.setSignedBy(me);
-        item.setStatus(ItemStatus.SIGNED);
+        LocalDateTime now = LocalDateTime.now();
+
+        // בדיקה: האם זה זיכוי למחסן?
+        // (אם המאשר הוא בעל המחסן שבו הפריט רשום)
+        if (item.getWarehouse().getOwner() != null &&
+                item.getWarehouse().getOwner().getId().equals(me.getId())) {
+
+            // לוגיקת זיכוי: הפריט חוזר למלאי פנוי
+            item.setSignedBy(null);
+            item.setStatus(ItemStatus.IN_STOCK);
+            item.setSignatureDate(null); // אין חתימה פעילה
+            item.setSignatureExpiryDate(null);
+
+        } else {
+            // לוגיקת העברה בין חיילים: הפריט עובר חתימה
+            item.setSignedBy(me);
+            item.setStatus(ItemStatus.SIGNED);
+            item.setSignatureDate(now);
+            item.setSignatureExpiryDate(now.plusYears(1)); // חידוש תוקף לשנה
+        }
+
         itemRepository.save(item);
 
+        // סגירת הבקשה
         tr.setStatus(TransferStatus.APPROVED);
-        tr.setDecidedAt(LocalDateTime.now());
+        tr.setDecidedAt(now);
         transferRequestRepository.save(tr);
     }
 
     @Transactional
     public void reject(Long transferRequestId, String approverPn) {
+        var tr = transferRequestRepository.findById(transferRequestId).orElseThrow();
+        var item = itemRepository.findById(tr.getItemId()).orElseThrow();
 
-        var me = userRepository.findByPersonalNumber(approverPn.trim())
-                .orElseThrow(() -> new RuntimeException("User not found: " + approverPn));
-
-        var tr = transferRequestRepository.findById(transferRequestId)
-                .orElseThrow(() -> new RuntimeException("TransferRequest not found: " + transferRequestId));
-
-        if (tr.getStatus() != TransferStatus.PENDING) {
-            throw new RuntimeException("Request is not PENDING");
-        }
-
-        if (!me.getId().equals(tr.getToUserId())) {
-            throw new RuntimeException("Forbidden: not your request");
-        }
-
-        var item = itemRepository.findById(tr.getItemId())
-                .orElseThrow(() -> new RuntimeException("Item not found: " + tr.getItemId()));
-
-        // חוזר להיות SIGNED אצל השולח (כלומר נשאר אותו signed_by_user_id שהיה)
+        // החזרת המצב לקדמותו
         item.setStatus(ItemStatus.SIGNED);
         itemRepository.save(item);
 
@@ -145,5 +152,4 @@ public class TransferService {
         tr.setDecidedAt(LocalDateTime.now());
         transferRequestRepository.save(tr);
     }
-
 }

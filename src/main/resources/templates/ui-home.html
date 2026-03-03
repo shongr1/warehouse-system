@@ -85,7 +85,6 @@
 <body class="dashboard-page">
 <div class="container py-5">
 
-    <!-- TOP BAR (clear hierarchy) -->
     <div class="topbar">
         <div class="title-wrap">
             <h1>Dashboard</h1>
@@ -118,7 +117,6 @@
         </div>
     </div>
 
-    <!-- STATS -->
     <div class="row g-3 mb-4">
         <div class="col-md-6">
             <div class="glass-card stat-card p-4 h-100">
@@ -137,11 +135,9 @@
         </div>
     </div>
 
-    <!-- MY WAREHOUSES -->
     <div class="glass-card p-4">
         <div class="section-head">
             <h4>My Warehouses</h4>
-            <a class="btn btn-sm btn-outline-light" th:href="@{/ui/warehouses}">View All</a>
         </div>
 
         <div th:if="${#lists.isEmpty(myWarehouses)}" class="empty-state">
