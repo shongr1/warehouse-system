@@ -4,14 +4,24 @@
     <meta charset="UTF-8">
     <title th:text="${warehouse.name}">Warehouse Details</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" th:href="@{/dashboard.css}">
 
     <style>
-        .rotate-icon { transition: transform 0.2s; cursor: pointer; }
-        .rotate-icon[aria-expanded="true"] { transform: rotate(90deg); }
+        .rotate-icon { transition: transform 0.2s; cursor: pointer; display: inline-block; color: #0dcaf0; }
+        .rotate-icon[aria-expanded="true"] { transform: rotate(90deg); color: #ffc107; }
         .main-row:hover { background: rgba(255,255,255,0.05) !important; }
-        .collapse-row { background: rgba(0,0,0,0.15); border-left: 4px solid #0d6efd; }
-        .badge-kit { font-size: 0.6rem; vertical-align: middle; }
+
+        /* עיצוב מודגש לשורת KIT */
+        .kit-row { background: rgba(13, 202, 240, 0.05) !important; border-left: 3px solid #0dcaf0 !important; }
+
+        .collapse-row { background: rgba(255,255,255,0.02); border-left: 4px solid #0dcaf0; }
+        .badge-kit {
+            font-size: 0.65rem;
+            vertical-align: middle;
+            padding: 0.2em 0.5em;
+            box-shadow: 0 0 8px rgba(13, 202, 240, 0.4);
+        }
 
         .category-card {
             background: rgba(255, 255, 255, 0.05);
@@ -20,7 +30,6 @@
             transition: all 0.3s ease;
             cursor: pointer;
             min-width: 160px;
-            text-decoration: none !important;
         }
         .category-card:hover { background: rgba(255, 255, 255, 0.1); transform: translateY(-5px); }
         .category-card.active {
@@ -28,19 +37,39 @@
             border-color: #0d6efd !important;
         }
         .count-circle { font-size: 1.8rem; font-weight: 800; color: #0dcaf0; }
-        #inventory-display-area { display: none; }
-        .glass-card { background: rgba(255, 255, 255, 0.05); border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); }
+        .glass-card { background: rgba(255, 255, 255, 0.05); border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); }
+
+        .kit-comp-item { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 6px 0; }
+        .kit-comp-item:last-child { border-bottom: none; }
+        .status-dot { font-size: 0.7rem; margin-right: 8px; }
+        .note-text { font-size: 0.75rem; color: #ffc107; opacity: 0.8; }
+        .status-label { font-size: 0.65rem; text-transform: uppercase; opacity: 0.7; margin-left: 5px; }
+
+        .search-container { position: relative; max-width: 400px; width: 100%; }
+        .search-input {
+            padding-left: 40px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.08) !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
+            transition: all 0.2s;
+        }
+        .search-input:focus {
+            background: rgba(255,255,255,0.12) !important;
+            border-color: #0dcaf0 !important;
+            box-shadow: 0 0 10px rgba(13, 202, 240, 0.2);
+        }
+        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #6c757d; z-index: 5; }
     </style>
 </head>
 
-<body class="dashboard-page">
+<body class="dashboard-page bg-dark text-white">
 <div class="container py-5">
 
-    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
         <strong th:text="${error}">Error</strong>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
-    <div th:if="${success}" class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
         <strong th:text="${success}">Success</strong>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
@@ -49,13 +78,13 @@
         <div>
             <h2 class="fw-bold mb-1" th:text="${warehouse.name}">Warehouse</h2>
             <div class="text-muted small">
-                <span th:text="${warehouse.location}">Location</span>
+                <i class="bi bi-geo-alt"></i> <span th:text="${warehouse.location}">Location</span>
                 <span class="mx-2">•</span>
-                <a th:href="@{/ui/warehouses/{id}(id=${warehouse.id})}" class="text-info text-decoration-none">Refresh Page</a>
+                <a th:href="@{/ui/warehouses/{id}(id=${warehouse.id})}" class="text-info text-decoration-none small">Refresh</a>
             </div>
         </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-outline-info px-4" data-bs-toggle="modal" data-bs-target="#addCategoryModal">+ New Category</button>
+            <button class="btn btn-outline-info px-4" data-bs-toggle="modal" data-bs-target="#addCategoryModal">+ Category</button>
             <a class="btn btn-outline-light px-4" th:href="@{/ui}">← Dashboard</a>
         </div>
     </div>
@@ -71,29 +100,42 @@
                      role="tab"
                      onclick="showInventory()">
                     <div class="count-circle" th:text="${#lists.size(entry.value)}">0</div>
-                    <div class="fw-bold text-white mt-2" th:text="${entry.key}">Category</div>
+                    <div class="fw-bold text-white mt-2 small" th:text="${entry.key}">Category</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="inventory-display-area" class="glass-card p-4 shadow-lg">
+    <div id="inventory-display-area" class="glass-card p-4 shadow-lg" style="display: none;">
         <div class="tab-content" id="pills-tabContent">
             <div th:each="entry, stat : ${inventoryMap}" class="tab-pane fade" th:id="'pane-' + ${stat.index}" role="tabpanel">
 
-                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 border-bottom border-secondary pb-3 gap-3">
                     <h5 class="fw-bold mb-0">Items in <span class="text-info" th:text="${entry.key}">Category</span></h5>
+
+                    <div class="search-container">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" class="form-control search-input text-white"
+                               placeholder="חפש לפי סריאל, מוצר או שם חייל..."
+                               onkeyup="filterInventory(this)">
+                    </div>
+
                     <a class="btn btn-primary btn-sm px-3" th:href="@{/ui/warehouses/{id}/add(id=${warehouse.id}, cat=${entry.key})}">+ Add Item</a>
                 </div>
 
-                <div class="table-responsive">
+                <div th:if="${#lists.isEmpty(entry.value)}" class="text-center py-5">
+                    <i class="bi bi-box-seam text-muted" style="font-size: 3rem;"></i>
+                    <p class="text-muted mt-3">No items in this category yet.</p>
+                </div>
+
+                <div th:if="${not #lists.isEmpty(entry.value)}" class="table-responsive">
                     <table class="table table-dark align-middle mb-0">
                         <thead>
-                        <tr class="text-muted border-secondary">
-                            <th style="width: 45px;"></th>
+                        <tr class="text-muted border-secondary small text-uppercase">
+                            <th style="width: 40px;"></th>
                             <th>Serial Number</th>
                             <th>Product</th>
-                            <th>Quantity</th>
+                            <th>Qty</th>
                             <th>Status</th>
                             <th>Signed By</th>
                             <th class="text-end">Actions</th>
@@ -101,72 +143,93 @@
                         </thead>
                         <tbody>
                         <th:block th:each="it : ${entry.value}">
-                            <tr class="main-row border-bottom-0">
+                            <tr class="main-row border-bottom-0" th:classappend="${it.isKit ? 'kit-row' : ''}">
                                 <td>
-                                    <button th:if="${it.item.itemType.kit}" class="btn btn-sm text-white rotate-icon border-0 shadow-none"
-                                            type="button" data-bs-toggle="collapse" th:attr="data-bs-target='#kit' + ${it.item.id}">▶</button>
+                                    <button th:if="${it.isKit}" class="btn btn-sm rotate-icon border-0 p-0 shadow-none"
+                                            type="button" data-bs-toggle="collapse"
+                                            th:attr="data-bs-target='#kit-' + ${it.item.id}">
+                                        <i class="bi bi-play-fill"></i>
+                                    </button>
                                 </td>
+                                <td class="col-serial">
+                                    <span class="fw-bold" th:classappend="${it.item.serialNumber != null ? 'text-info' : 'text-muted'}"
+                                          th:text="${it.item.serialNumber != null ? it.item.serialNumber : 'Bulk'}">SN</span>
+                                    <span th:if="${it.isKit}" class="badge bg-primary ms-1 badge-kit">KIT</span>
+                                </td>
+                                <td class="col-product">
+                                    <div th:text="${it.item.itemType.name}">Product</div>
+                                    <div th:if="${it.item.notes != null and !it.item.notes.isEmpty()}" class="note-text">
+                                        <i class="bi bi-chat-left-text me-1"></i>[[${it.item.notes}]]
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-dark border border-secondary" th:text="${it.count}">1</span></td>
                                 <td>
-                                    <span class="fw-bold text-info" th:text="${it.item.serialNumber != null ? it.item.serialNumber : 'Bulk'}">SN</span>
-                                    <span th:if="${it.item.itemType.kit}" class="badge bg-primary ms-1 badge-kit">KIT</span>
+                                    <span class="badge" th:classappend="${it.item.status != null && it.item.status.toString() == 'IN_STOCK' ? 'bg-success' : 'bg-secondary'}"
+                                          th:text="${it.item.status}">STATUS</span>
                                 </td>
-                                <td th:text="${it.item.itemType.name}">Product</td>
-                                <td><span class="badge bg-info text-dark fw-bold" th:text="${it.count}">1</span></td>
-                                <td>
-            <span class="badge" th:classappend="${it.item.status.name() == 'IN_STOCK' ? 'bg-success' : 'bg-secondary'}"
-                  th:text="${it.item.status}">STATUS</span>
-                                </td>
-                                <td th:text="${it.item.signedBy != null ? it.item.signedBy.fullName : '—'}">—</td>
+                                <td class="small col-signed" th:text="${it.item.signedBy != null ? it.item.signedBy.fullName : '—'}">—</td>
 
                                 <td class="text-end">
                                     <div class="d-flex justify-content-end align-items-center gap-2">
+                                        <button class="btn btn-sm btn-outline-warning border-0"
+                                                type="button"
+                                                th:data-item-id="${it.item.id}"
+                                                th:data-item-notes="${it.item.notes != null ? it.item.notes : ''}"
+                                                th:data-item-status="${it.item.status}"
+                                                onclick="openNotesModal(this)">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
 
-                                        <form th:if="${it.item.status.name() == 'IN_STOCK'}" th:action="@{/ui/items/sign-bulk}" method="post" class="d-flex gap-1">
+                                        <form th:if="${it.item.status != null && it.item.status.toString() == 'IN_STOCK'}" th:action="@{/ui/items/sign-bulk}" method="post">
                                             <input type="hidden" name="itemTypeId" th:value="${it.item.itemType.id}">
                                             <input type="hidden" name="warehouseId" th:value="${warehouse.id}">
-                                            <input type="number" name="quantity" value="1" min="1" th:max="${it.count}" class="form-control form-control-sm bg-dark text-white border-secondary" style="width: 60px;">
-                                            <button class="btn btn-sm btn-outline-success" type="submit">Sign</button>
+                                            <input type="hidden" name="quantity" value="1">
+                                            <button class="btn btn-sm btn-success px-3" type="submit">Sign</button>
                                         </form>
 
-                                        <form th:if="${it.item.status.name() == 'SIGNED' and it.item.signedBy != null and it.item.signedBy.personalNumber != session.user.personalNumber}"
-                                              th:action="@{/ui/items/transfer-bulk}" method="post">
-                                            <input type="hidden" name="itemTypeId" th:value="${it.item.itemType.id}">
-                                            <input type="hidden" name="warehouseId" th:value="${warehouse.id}">
-                                            <input type="hidden" name="fromUserId" th:value="${it.item.signedBy.id}">
-                                            <input type="hidden" name="quantity" th:value="${it.count}">
-                                            <button class="btn btn-sm btn-outline-warning" type="submit">Take All</button>
-                                        </form>
-
-                                        <div th:if="${it.item.status.name() == 'SIGNED' and it.item.signedBy != null and it.item.signedBy.personalNumber == session.user.personalNumber}" class="d-flex gap-1">
-                                            <span class="badge bg-primary d-flex align-items-center me-1">Mine</span>
-                                            <form th:action="@{/ui/items/{id}/transfer-request(id=${it.item.id})}" method="post" class="d-flex gap-1">
+                                        <div th:if="${it.item.status != null && it.item.status.toString() == 'SIGNED' and it.item.signedBy != null and it.item.signedBy.personalNumber == session.user.personalNumber}"
+                                             class="d-flex gap-1 align-items-center">
+                                            <span class="badge bg-primary me-2">Mine</span>
+                                            <form th:action="@{/ui/items/{itemId}/transfer-request(itemId=${it.item.id})}" method="post" class="d-flex gap-1">
                                                 <input type="hidden" name="itemTypeId" th:value="${it.item.itemType.id}">
                                                 <input type="hidden" name="warehouseId" th:value="${warehouse.id}">
-                                                <input type="hidden" name="note" value="Warehouse Transfer">
-
-                                                <input type="number" name="quantity" th:value="${it.count}" min="1" th:max="${it.count}"
-                                                       class="form-control form-control-sm bg-dark text-white border-secondary" style="width: 55px;">
-
+                                                <input type="hidden" name="quantity" value="1">
                                                 <input type="text" name="toPersonalNumber" class="form-control form-control-sm bg-dark text-white border-secondary"
                                                        placeholder="Target PN" style="width: 90px;" required>
-
                                                 <button class="btn btn-sm btn-warning" type="submit">Transfer</button>
                                             </form>
                                         </div>
-
                                     </div>
                                 </td>
                             </tr>
 
-                            <tr th:if="${it.item.itemType.kit}" class="collapse-row collapse" th:id="'kit' + ${it.item.id}">
-                                <td colspan="7">
-                                    <div class="p-3">
-                                        <ul class="list-unstyled mb-0">
-                                            <li th:each="comp : ${kitChecklist[it.item.id]}" class="small text-muted mb-1">
-                                                • <span th:text="${comp.componentName}">Component</span>:
-                                                <span class="text-white" th:text="${comp.actualQty}">0</span>/<span th:text="${comp.expectedQty}">1</span>
-                                            </li>
-                                        </ul>
+                            <tr th:if="${it.isKit}" class="collapse-row collapse" th:id="'kit-' + ${it.item.id}">
+                                <td colspan="7" class="p-0">
+                                    <div class="ps-5 py-3 pe-4">
+                                        <h6 class="text-info small fw-bold mb-2 text-uppercase" style="letter-spacing: 1px;">Kit Contents & Condition</h6>
+                                        <div class="row">
+                                            <div th:each="comp : ${it.components}" class="col-md-4 kit-comp-item">
+                                                <div class="d-flex justify-content-between align-items-center w-100">
+                                                    <div>
+                                                        <span class="status-dot"
+                                                              th:classappend="${comp.actualQty < comp.expectedQty ? 'text-danger' : (comp.status != null && comp.status.toString() == 'DAMAGED' ? 'text-warning' : 'text-success')}">●</span>
+                                                        <span class="small text-white-50" th:text="${comp.componentName}">Component</span>
+                                                    </div>
+
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <span class="fw-bold small"
+                                                              th:classappend="${comp.actualQty < comp.expectedQty ? 'text-danger' : 'text-success'}"
+                                                              th:text="${comp.actualQty + ' / ' + comp.expectedQty}">0 / 1</span>
+
+                                                        <button class="btn btn-sm btn-link p-0 text-warning shadow-none"
+                                                                type="button"
+                                                                th:attr="onclick='openCompModal(' + ${it.item.id} + ', \'' + ${comp.componentName} + '\', ' + ${comp.actualQty} + ', ' + ${comp.expectedQty} + ')'">
+                                                            <i class="bi bi-pencil-fill" style="font-size: 0.75rem;"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -179,38 +242,146 @@
     </div>
 </div>
 
-<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-dark text-white border-secondary">
-            <form th:action="@{/ui/categories/add}" method="post">
-                <input type="hidden" name="warehouseId" th:value="${warehouse.id}">
+<div class="modal fade" id="compModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content bg-dark text-white border-secondary shadow-lg">
+            <form th:action="@{/ui/items/update-component}" method="post">
+                <input type="hidden" name="itemId" id="compItemId">
+                <input type="hidden" name="componentName" id="compNameInput">
                 <div class="modal-header border-secondary">
-                    <h5 class="modal-title">Create New Category</h5>
+                    <h6 class="modal-title" id="compTitle">Update Component</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label small text-muted">Category Name</label>
-                        <input type="text" name="name" class="form-control bg-dark text-white border-secondary" placeholder="e.g. Optics, Radios" required>
+                        <label class="form-label small text-muted">Actual Quantity</label>
+                        <input type="number" name="actualQty" id="compActualInput"
+                               class="form-control bg-dark text-white border-secondary" min="0">
+                    </div>
+                    <div class="small text-muted text-center">
+                        Expected: <span id="compExpectedLabel" class="fw-bold"></span>
                     </div>
                 </div>
                 <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-info">Save Category</button>
+                    <button type="submit" class="btn btn-warning btn-sm w-100 fw-bold text-dark">Save Changes</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-white border-secondary shadow-lg">
+            <form th:action="@{/ui/categories/add}" method="post">
+                <input type="hidden" name="warehouseId" th:value="${warehouse.id}">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Create New Category</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Category Name</label>
+                        <input type="text" name="name" class="form-control bg-dark text-white border-secondary p-2" placeholder="e.g. Optics, Radios" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info px-4 text-dark fw-bold">Save Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="notesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-white border-secondary shadow-lg">
+            <form th:action="@{/ui/items/update-notes}" method="post">
+                <input type="hidden" name="itemId" id="noteItemId">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-warning"><i class="bi bi-pencil-square me-2"></i>Update Item</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-4">
+                        <label class="form-label small text-muted">Item Status</label>
+                        <select name="status" id="noteItemStatus" class="form-select bg-dark text-white border-secondary">
+                            <option value="IN_STOCK">IN STOCK</option>
+                            <option value="DAMAGED">DAMAGED</option>
+                            <option value="MISSING">MISSING</option>
+                            <option value="SIGNED">SIGNED</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Notes / Condition:</label>
+                        <textarea name="notes" id="noteTextArea" class="form-control bg-dark text-white border-secondary p-2" rows="4" placeholder="Update condition..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-warning px-4 text-dark fw-bold">Update Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     function showInventory() {
-        document.getElementById('inventory-display-area').style.display = 'block';
+        const area = document.getElementById('inventory-display-area');
+        area.style.display = 'block';
         setTimeout(() => {
-            document.getElementById('inventory-display-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 150);
+            area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    }
+
+    function openNotesModal(buttonElement) {
+        const itemId = buttonElement.getAttribute('data-item-id');
+        const currentNotes = buttonElement.getAttribute('data-item-notes');
+        const currentStatus = buttonElement.getAttribute('data-item-status');
+
+        document.getElementById('noteItemId').value = itemId;
+        document.getElementById('noteTextArea').value = currentNotes;
+        const statusSelect = document.getElementById('noteItemStatus');
+        if(currentStatus) statusSelect.value = currentStatus;
+
+        new bootstrap.Modal(document.getElementById('notesModal')).show();
+    }
+
+    function openCompModal(itemId, name, actual, expected) {
+        document.getElementById('compItemId').value = itemId;
+        document.getElementById('compNameInput').value = name;
+        document.getElementById('compActualInput').value = actual;
+        document.getElementById('compActualInput').max = expected;
+        document.getElementById('compExpectedLabel').innerText = expected;
+        document.getElementById('compTitle').innerText = "Update: " + name;
+
+        new bootstrap.Modal(document.getElementById('compModal')).show();
+    }
+
+    function filterInventory(input) {
+        const filter = input.value.toLowerCase();
+        const activePane = input.closest('.tab-pane');
+        const rows = activePane.querySelectorAll('.main-row');
+
+        rows.forEach(row => {
+            const serial = row.querySelector('.col-serial').textContent.toLowerCase();
+            const product = row.querySelector('.col-product').textContent.toLowerCase();
+            const signed = row.querySelector('.col-signed').textContent.toLowerCase();
+
+            if (serial.includes(filter) || product.includes(filter) || signed.includes(filter)) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+                const nextRow = row.nextElementSibling;
+                if (nextRow && nextRow.classList.contains('collapse-row')) {
+                    nextRow.classList.remove('show');
+                }
+            }
+        });
     }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

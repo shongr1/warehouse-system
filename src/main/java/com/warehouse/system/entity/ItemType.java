@@ -21,30 +21,23 @@ public class ItemType {
     @Column(nullable = false)
     private boolean serialized;
 
-    // ===============================
-    // NEW: האם זה מארז / ערכה
-    // ===============================
     @Column(name = "is_kit", nullable = false)
     private boolean kit = false;
 
-    // ===============================
-    // NEW: רשימת תתי־פריטים לערכה
-    // ===============================
     @OneToMany(
             mappedBy = "kitType",
             cascade = CascadeType.ALL,
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
-    private List<KitComponent> components = new ArrayList<>();
+    private List<KitTemplateComponent> kitTemplateComponents = new ArrayList<>();
 
     public ItemType() {}
 
-    // ===============================
-    // Getters / Setters
-    // ===============================
+    // --- Getters / Setters ---
 
     public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
     public String getCatalogNumber() { return catalogNumber; }
     public void setCatalogNumber(String catalogNumber) { this.catalogNumber = catalogNumber; }
@@ -58,19 +51,37 @@ public class ItemType {
     public boolean isKit() { return kit; }
     public void setKit(boolean kit) { this.kit = kit; }
 
-    public List<KitComponent> getComponents() { return components; }
-    public void setComponents(List<KitComponent> components) { this.components = components; }
-
-    // ===============================
-    // Helpers נוחים להוספה/הסרה
-    // ===============================
-    public void addComponent(KitComponent component) {
-        components.add(component);
-        component.setKitType(this);
+    public List<KitTemplateComponent> getKitTemplateComponents() {
+        return kitTemplateComponents;
     }
 
-    public void removeComponent(KitComponent component) {
-        components.remove(component);
-        component.setKitType(null);
+    public void setKitTemplateComponents(List<KitTemplateComponent> kitTemplateComponents) {
+        this.kitTemplateComponents = kitTemplateComponents;
+    }
+
+    // --- Helpers (ניהול הקשר הדו-כיווני) ---
+
+    public void addKitTemplateComponent(KitTemplateComponent component) {
+        if (component != null) {
+            kitTemplateComponents.add(component);
+            component.setKitType(this);
+        }
+    }
+
+    public void removeKitTemplateComponent(KitTemplateComponent component) {
+        if (component != null) {
+            kitTemplateComponents.remove(component);
+            component.setKitType(null);
+        }
+    }
+
+    // --- מתודות תאימות ל-UiController (פותר את ה-Cannot Resolve) ---
+
+    public void addTemplateComponent(KitTemplateComponent component) {
+        this.addKitTemplateComponent(component);
+    }
+
+    public List<KitTemplateComponent> getTemplateComponents() {
+        return this.kitTemplateComponents;
     }
 }

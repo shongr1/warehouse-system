@@ -2,29 +2,25 @@ package com.warehouse.system.repository;
 
 import com.warehouse.system.entity.Item;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface ItemRepository extends JpaRepository<Item, Long> {
 
     // --- בדיקות ייחודיות (Validation) ---
-
-    // בודק אם סריאל קיים בכלל במערכת (מומלץ להשתמש בזה למניעת כפילויות גלובלית)
     boolean existsBySerialNumber(String serialNumber);
-
-    // הבדיקה הקודמת שלך (ייחודיות בתוך אותו סוג מוצר)
     boolean existsByItemType_IdAndSerialNumber(Long itemTypeId, String serialNumber);
+
+    // --- שאילתת ה-Auto-Increment למק"ט רץ ---
+    // השאילתה מוציאה את המספר מהסוף של ה-internalCatalogId (למשל מתוך "S11-15" היא תוציא 15)
+    @Query(value = "SELECT MAX(CAST(SUBSTRING(internal_catalog_id, LENGTH(:prefix) + 1) AS INTEGER)) " +
+            "FROM items WHERE internal_catalog_id LIKE :prefix", nativeQuery = true)
+    Integer findMaxNumberByPrefix(@Param("prefix") String prefix);
 
     // --- שאילתות שליפה (Queries) ---
     List<Item> findByCategoryId(Long categoryId);
-
-    // בונוס: מוצאת את כל הפריטים במחסן מסוים שעדיין אין להם קטגוריה
     List<Item> findByWarehouseIdAndCategoryIsNull(Long warehouseId);
-    // מציאת כל הפריטים במחסן מסוים
     List<Item> findByWarehouseId(Long warehouseId);
-
-    // מציאת כל הפריטים שחתומים אצל משתמש מסוים (המתודה שהחזרנו)
     List<Item> findBySignedBy_Id(Long userId);
-
-    // מציאת כל הערכות (Kits) במחסן מסוים
-    List<Item> findByWarehouseIdAndItemType_KitTrue(Long warehouseId);
-}
+    List<Item> findByWarehouseIdAndItemType_KitTrue(Long warehouseId);}

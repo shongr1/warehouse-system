@@ -9,6 +9,9 @@ public class StockForm {
     private String startSerial;
     private String manualSerials;
 
+    // השדה החדש שהוספנו לטובת המק"ט הרץ (כמו S11-)
+    private String prefix;
+
     // הוסיפי את השדה הזה:
     private boolean kit;
 
@@ -31,6 +34,16 @@ public class StockForm {
 
     public String getManualSerials() { return manualSerials; }
     public void setManualSerials(String manualSerials) { this.manualSerials = manualSerials; }
+
+    // --- ה-Getter וה-Setter עבור prefix ---
+
+    public String getPrefix() {
+        return prefix;
+    }
+
+    public void setPrefix(String prefix) {
+        this.prefix = prefix;
+    }
 
     // --- הוסיפי את ה-Getter וה-Setter עבור kit ---
 

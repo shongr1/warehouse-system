@@ -84,6 +84,17 @@ public class TransferService {
             itemRepository.save(item);
         }
     }
+    @Transactional
+    public void approveBatch(java.util.List<Long> ids, String approverPn) {
+        if (ids == null || ids.isEmpty()) return;
+
+        for (Long id : ids) {
+            // אנחנו קוראים למתודה הקיימת כדי לשמור על עקביות הלוגיקה
+            this.approve(id, approverPn);
+        }
+    }
+
+
 
     @Transactional
     public void approve(Long transferRequestId, String approverPn) {

@@ -16,10 +16,12 @@ public class Item {
     @Column(name = "serial_number", nullable = true)
     private String serialNumber;
 
-    // --- הוספת שדה כמות (Quantity) לניהול פריטי Bulk ---
-    // שנה את השורה הזו בתוך Item.java
+    @Column(name = "internal_catalog_id", nullable = true)
+    private String internalCatalogId;
+
     @Column(name = "quantity", nullable = false)
-    private Integer quantity = 1; // מבטיח שתמיד תהיה לפחות יחידה אחת
+    private Integer quantity = 1;
+
     @ManyToOne(optional = false)
     @JoinColumn(name = "item_type_id", nullable = false)
     private ItemType itemType;
@@ -31,8 +33,6 @@ public class Item {
     @ManyToOne
     @JoinColumn(name = "category_id")
     private Category category;
-
-    /* ========= מעקב וסטטוס ========= */
 
     @ManyToOne
     @JoinColumn(name = "owner_user_id")
@@ -55,27 +55,36 @@ public class Item {
     @Column(name = "location")
     private String location;
 
+    @Column(name = "notes")
+    private String notes;
+
+    // ==========================================
+    // תיקון פה: שינוי ל-components ועדכון ה-mappedBy
+    // ==========================================
     @OneToMany(
-            mappedBy = "kitItem",
+            mappedBy = "item", // חייב להתאים לשם השדה בתוך KitComponent
             cascade = CascadeType.ALL,
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
-    private List<KitItemComponent> kitComponents = new ArrayList<>();
+    private List<KitComponent> components = new ArrayList<>();
 
-    public void addKitComponent(KitItemComponent component) {
-        kitComponents.add(component);
-        component.setKitItem(this);
+    public void addComponent(KitComponent component) {
+        components.add(component);
+        component.setItem(this);
     }
 
     /* ========= Getters / Setters ========= */
 
     public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
     public String getSerialNumber() { return serialNumber; }
     public void setSerialNumber(String serialNumber) { this.serialNumber = serialNumber; }
 
-    // Getter & Setter לכמות (פותר את השגיאה ב-Service)
+    public String getInternalCatalogId() { return internalCatalogId; }
+    public void setInternalCatalogId(String internalCatalogId) { this.internalCatalogId = internalCatalogId; }
+
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
 
@@ -106,6 +115,20 @@ public class Item {
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
 
-    public List<KitItemComponent> getKitComponents() { return kitComponents; }
-    public void setKitComponents(List<KitItemComponent> kitComponents) { this.kitComponents = kitComponents; }
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
+
+    public List<KitComponent> getComponents() { return components; }
+    public void setComponents(List<KitComponent> components) { this.components = components; }
+    // בתוך Item.java
+
+    // גשר לפתרון השגיאה - מחזיר את רשימת הרכיבים בשם שה-Service מחפש
+    public List<KitComponent> getKitComponents() {
+        return this.components;
+    }
+
+    // אופציונלי: אם יש לך קוד שמנסה גם להגדיר את הרשימה בשם הזה
+    public void setKitComponents(List<KitComponent> kitComponents) {
+        this.components = kitComponents;
+    }
 }

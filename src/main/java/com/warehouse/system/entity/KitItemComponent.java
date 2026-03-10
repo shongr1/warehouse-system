@@ -70,4 +70,8 @@ public class KitItemComponent {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public String getDisplayRatio() {
+        return this.actualQty + " / " + this.expectedQty;
+    }
 }

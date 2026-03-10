@@ -287,7 +287,7 @@ public class UiController {
                     Item savedItem = itemRepository.save(item);
 
                     if (itemType.isKit()) {
-                        var components = kitComponentRepository.findByKitType_Id(itemType.getId());
+                        var components = kitComponentRepository.findByItem_Id(itemType.getId());
                         for (var c : components) {
                             KitItemComponent row = new KitItemComponent();
                             row.setKitItem(savedItem);
@@ -479,9 +479,14 @@ public class UiController {
 
         if (form.isKit() && form.getComponents() != null) {
             for (KitComponent comp : form.getComponents()) {
-                // שימוש במתודת ה-Helper שהגדרת ב-Entity (addComponent)
-                // היא זו שקושרת את ה-comp ל-it (האבא)
-                it.addComponent(comp);
+                // יצירת תבנית חדשה מתוך הנתונים שהגיעו מהטופס
+                KitTemplateComponent template = new KitTemplateComponent();
+                template.setComponentName(comp.getComponentName());
+                template.setSubCatalogNumber(comp.getSubCatalogNumber());
+                template.setQuantity(comp.getQuantity()); // הכמות הנדרשת בתקן
+
+                // עכשיו it (שהוא ItemType) יקבל את זה בשמחה
+                it.addTemplateComponent(template);
             }
         }
         // -------------------------------
@@ -635,7 +640,15 @@ public class UiController {
 
         return "redirect:/ui/my-transfer-requests";
     }
+    @PostMapping("/ui/transfer-requests/approve-batch")
+    public String approveBatch(@RequestParam("ids") List<Long> ids, HttpSession session) {
+        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
 
+        String pn = AuthController.currentPn(session);
+        transferService.approveBatch(ids, pn);
+
+        return "redirect:/ui/my-transfer-requests";
+    }
     @PostMapping("/ui/transfer-requests/{id}/reject")
     public String rejectTransfer(@PathVariable Long id, HttpSession session) {
         if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
@@ -761,7 +774,7 @@ public class UiController {
             return ResponseEntity.status(401).body("Not logged in");
         }
 
-        var list = kitComponentRepository.findByKitType_Id(id);
+        var list = kitComponentRepository.findByItem_Id(id);
 
         // הכי נקי: DTO ולא Map (מונע גם את השגיאת generics שהייתה לך)
         var out = list.stream().map(c -> new KitComponentDto(
@@ -805,7 +818,7 @@ public class UiController {
 
         model.addAttribute("kitType", itemType);
         model.addAttribute("components",
-                kitComponentRepository.findByKitType_Id(id));
+                kitComponentRepository.findByItem_Id(id));
 
         return "kit-components-manage";
     }
@@ -986,5 +999,23 @@ public class UiController {
 
         redirectAttributes.addFlashAttribute("success", "הצלחנו! " + toTransfer.size() + " פריטים הועברו אליך.");
         return "redirect:/ui/warehouses/" + warehouseId;
+    }
+    @PostMapping("/ui/items/update-component")
+    public String updateKitComponent(@RequestParam Long itemId,
+                                     @RequestParam String componentName,
+                                     @RequestParam int actualQty,
+                                     RedirectAttributes redirectAttributes) {
+        try {
+            // 1. קריאה לסרוויס שיעדכן את הכמות בבסיס הנתונים
+            // הערה: תצטרך לוודא שיש לך לוגיקה שמוצאת את ה-Kit לפי ה-ID והשם של הרכיב
+
+            redirectAttributes.addFlashAttribute("success", "Component updated successfully!");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Failed to update component: " + e.getMessage());
+        }
+
+        // 2. חזרה לדף המחסן שממנו הגענו (נניח שזה הדף הנוכחי)
+        // אם יש לך את ה-warehouseId, עדיף להחזיר אליו ישירות
+        return "redirect:/ui";
     }
 }

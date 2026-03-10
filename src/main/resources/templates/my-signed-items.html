@@ -53,7 +53,7 @@
                     <th>Product</th>
                     <th>Warehouse</th>
                     <th>Status</th>
-                    <th>Expiry Status</th>
+                    <th>Expiry</th>
                     <th class="text-end">Actions</th>
                 </tr>
                 </thead>
@@ -72,13 +72,11 @@
                         <div th:if="${it.signatureExpiryDate != null}">
                             <span th:if="${it.daysRemaining <= 0}" class="badge bg-danger badge-expiry">EXPIRED</span>
                             <span th:if="${it.daysRemaining > 0 and it.daysRemaining <= 30}" class="badge bg-warning text-dark badge-expiry">
-                                Renew in <span th:text="${it.daysRemaining}"></span> days
+                                <span th:text="${it.daysRemaining}"></span>d
                             </span>
                             <span th:if="${it.daysRemaining > 30}" class="badge bg-success badge-expiry">
-                                <span th:text="${it.daysRemaining}"></span> days left
+                                <span th:text="${it.daysRemaining}"></span>d
                             </span>
-                            <small class="d-block text-muted mt-1" style="font-size: 0.7rem;"
-                                   th:text="${#temporals.format(it.signatureExpiryDate, 'dd/MM/yyyy')}"></small>
                         </div>
                         <span th:if="${it.signatureExpiryDate == null}" class="text-muted small">—</span>
                     </td>
@@ -90,14 +88,19 @@
                                 <input type="text" name="toPersonalNumber"
                                        class="form-control form-control-sm action-input"
                                        placeholder="מ&quot;א מקבל" required>
+
+                                <input type="hidden" name="quantity" value="1">
                                 <input type="hidden" name="note" value="Handover from personal list">
+
                                 <button class="btn btn-sm btn-outline-primary" type="submit">Transfer</button>
                             </form>
 
                             <form th:action="@{/ui/items/{id}/transfer-request(id=${it.id})}" method="post" onsubmit="disableButton(this)">
                                 <input type="hidden" name="toPersonalNumber" th:value="${it.warehouseOwnerPn}">
+                                <input type="hidden" name="quantity" value="1">
                                 <input type="hidden" name="note" th:value="'זיכוי למחסן ' + ${it.warehouseName}">
-                                <button class="btn btn-sm btn-warning" type="submit">Request Return</button>
+
+                                <button class="btn btn-sm btn-warning" type="submit">Return</button>
                             </form>
 
                         </div>
@@ -113,7 +116,6 @@
 </div>
 
 <script>
-    // פונקציה למניעת לחיצות כפולות שיוצרות כפילויות ב-DB
     function disableButton(form) {
         const btn = form.querySelector('button');
         btn.disabled = true;
