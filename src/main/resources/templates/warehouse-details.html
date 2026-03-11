@@ -11,54 +11,23 @@
         .rotate-icon { transition: transform 0.2s; cursor: pointer; display: inline-block; color: #0dcaf0; }
         .rotate-icon[aria-expanded="true"] { transform: rotate(90deg); color: #ffc107; }
         .main-row:hover { background: rgba(255,255,255,0.05) !important; }
-
-        /* עיצוב מודגש לשורת KIT */
         .kit-row { background: rgba(13, 202, 240, 0.05) !important; border-left: 3px solid #0dcaf0 !important; }
-
         .collapse-row { background: rgba(255,255,255,0.02); border-left: 4px solid #0dcaf0; }
-        .badge-kit {
-            font-size: 0.65rem;
-            vertical-align: middle;
-            padding: 0.2em 0.5em;
-            box-shadow: 0 0 8px rgba(13, 202, 240, 0.4);
-        }
-
-        .category-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            min-width: 160px;
-        }
+        .badge-kit { font-size: 0.65rem; vertical-align: middle; padding: 0.2em 0.5em; box-shadow: 0 0 8px rgba(13, 202, 240, 0.4); }
+        .category-card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 15px; transition: all 0.3s ease; cursor: pointer; min-width: 160px; }
         .category-card:hover { background: rgba(255, 255, 255, 0.1); transform: translateY(-5px); }
-        .category-card.active {
-            background: rgba(13, 110, 253, 0.2) !important;
-            border-color: #0d6efd !important;
-        }
+        .category-card.active { background: rgba(13, 110, 253, 0.2) !important; border-color: #0d6efd !important; }
         .count-circle { font-size: 1.8rem; font-weight: 800; color: #0dcaf0; }
         .glass-card { background: rgba(255, 255, 255, 0.05); border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); }
-
         .kit-comp-item { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 6px 0; }
         .kit-comp-item:last-child { border-bottom: none; }
         .status-dot { font-size: 0.7rem; margin-right: 8px; }
         .note-text { font-size: 0.75rem; color: #ffc107; opacity: 0.8; }
-        .status-label { font-size: 0.65rem; text-transform: uppercase; opacity: 0.7; margin-left: 5px; }
-
         .search-container { position: relative; max-width: 400px; width: 100%; }
-        .search-input {
-            padding-left: 40px;
-            border-radius: 20px;
-            background: rgba(255,255,255,0.08) !important;
-            border: 1px solid rgba(255,255,255,0.2) !important;
-            transition: all 0.2s;
-        }
-        .search-input:focus {
-            background: rgba(255,255,255,0.12) !important;
-            border-color: #0dcaf0 !important;
-            box-shadow: 0 0 10px rgba(13, 202, 240, 0.2);
-        }
+        .search-input { padding-left: 40px; border-radius: 20px; background: rgba(255,255,255,0.08) !important; border: 1px solid rgba(255,255,255,0.2) !important; transition: all 0.2s; }
+        .search-input:focus { background: rgba(255,255,255,0.12) !important; border-color: #0dcaf0 !important; box-shadow: 0 0 10px rgba(13, 202, 240, 0.2); }
         .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #6c757d; z-index: 5; }
+        #sig-canvas { border: 1px solid #ced4da; background: #fff; border-radius: 4px; cursor: crosshair; touch-action: none; width: 100%; }
     </style>
 </head>
 
@@ -112,20 +81,13 @@
 
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 border-bottom border-secondary pb-3 gap-3">
                     <h5 class="fw-bold mb-0">Items in <span class="text-info" th:text="${entry.key}">Category</span></h5>
-
                     <div class="search-container">
                         <i class="bi bi-search search-icon"></i>
                         <input type="text" class="form-control search-input text-white"
                                placeholder="חפש לפי סריאל, מוצר או שם חייל..."
                                onkeyup="filterInventory(this)">
                     </div>
-
                     <a class="btn btn-primary btn-sm px-3" th:href="@{/ui/warehouses/{id}/add(id=${warehouse.id}, cat=${entry.key})}">+ Add Item</a>
-                </div>
-
-                <div th:if="${#lists.isEmpty(entry.value)}" class="text-center py-5">
-                    <i class="bi bi-box-seam text-muted" style="font-size: 3rem;"></i>
-                    <p class="text-muted mt-3">No items in this category yet.</p>
                 </div>
 
                 <div th:if="${not #lists.isEmpty(entry.value)}" class="table-responsive">
@@ -168,7 +130,6 @@
                                           th:text="${it.item.status}">STATUS</span>
                                 </td>
                                 <td class="small col-signed" th:text="${it.item.signedBy != null ? it.item.signedBy.fullName : '—'}">—</td>
-
                                 <td class="text-end">
                                     <div class="d-flex justify-content-end align-items-center gap-2">
                                         <button class="btn btn-sm btn-outline-warning border-0"
@@ -180,7 +141,7 @@
                                             <i class="bi bi-pencil-square"></i>
                                         </button>
 
-                                        <form th:if="${it.item.status != null && it.item.status.toString() == 'IN_STOCK'}" th:action="@{/ui/items/sign-bulk}" method="post">
+                                        <form th:if="${it.item.status != null && it.item.status.toString() == 'IN_STOCK'}" th:action="@{/items/ui/sign-bulk}" method="post">
                                             <input type="hidden" name="itemTypeId" th:value="${it.item.itemType.id}">
                                             <input type="hidden" name="warehouseId" th:value="${warehouse.id}">
                                             <input type="hidden" name="quantity" value="1">
@@ -190,40 +151,27 @@
                                         <div th:if="${it.item.status != null && it.item.status.toString() == 'SIGNED' and it.item.signedBy != null and it.item.signedBy.personalNumber == session.user.personalNumber}"
                                              class="d-flex gap-1 align-items-center">
                                             <span class="badge bg-primary me-2">Mine</span>
-                                            <form th:action="@{/ui/items/{itemId}/transfer-request(itemId=${it.item.id})}" method="post" class="d-flex gap-1">
-                                                <input type="hidden" name="itemTypeId" th:value="${it.item.itemType.id}">
-                                                <input type="hidden" name="warehouseId" th:value="${warehouse.id}">
-                                                <input type="hidden" name="quantity" value="1">
-                                                <input type="text" name="toPersonalNumber" class="form-control form-control-sm bg-dark text-white border-secondary"
-                                                       placeholder="Target PN" style="width: 90px;" required>
-                                                <button class="btn btn-sm btn-warning" type="submit">Transfer</button>
-                                            </form>
+                                            <button class="btn btn-sm btn-warning"
+                                                    type="button"
+                                                    th:onclick="'openTransferModal(' + ${it.item.id} + ')'">Transfer</button>
                                         </div>
                                     </div>
                                 </td>
                             </tr>
-
                             <tr th:if="${it.isKit}" class="collapse-row collapse" th:id="'kit-' + ${it.item.id}">
                                 <td colspan="7" class="p-0">
                                     <div class="ps-5 py-3 pe-4">
-                                        <h6 class="text-info small fw-bold mb-2 text-uppercase" style="letter-spacing: 1px;">Kit Contents & Condition</h6>
+                                        <h6 class="text-info small fw-bold mb-2 text-uppercase">Kit Contents & Condition</h6>
                                         <div class="row">
                                             <div th:each="comp : ${it.components}" class="col-md-4 kit-comp-item">
                                                 <div class="d-flex justify-content-between align-items-center w-100">
                                                     <div>
-                                                        <span class="status-dot"
-                                                              th:classappend="${comp.actualQty < comp.expectedQty ? 'text-danger' : (comp.status != null && comp.status.toString() == 'DAMAGED' ? 'text-warning' : 'text-success')}">●</span>
+                                                        <span class="status-dot" th:classappend="${comp.actualQty < comp.expectedQty ? 'text-danger' : 'text-success'}">●</span>
                                                         <span class="small text-white-50" th:text="${comp.componentName}">Component</span>
                                                     </div>
-
                                                     <div class="d-flex align-items-center gap-2">
-                                                        <span class="fw-bold small"
-                                                              th:classappend="${comp.actualQty < comp.expectedQty ? 'text-danger' : 'text-success'}"
-                                                              th:text="${comp.actualQty + ' / ' + comp.expectedQty}">0 / 1</span>
-
-                                                        <button class="btn btn-sm btn-link p-0 text-warning shadow-none"
-                                                                type="button"
-                                                                th:attr="onclick='openCompModal(' + ${it.item.id} + ', \'' + ${comp.componentName} + '\', ' + ${comp.actualQty} + ', ' + ${comp.expectedQty} + ')'">
+                                                        <span class="fw-bold small" th:classappend="${comp.actualQty < comp.expectedQty ? 'text-danger' : 'text-success'}" th:text="${comp.actualQty + ' / ' + comp.expectedQty}">0 / 1</span>
+                                                        <button class="btn btn-sm btn-link p-0 text-warning" type="button" th:attr="onclick='openCompModal(' + ${it.item.id} + ', \'' + ${comp.componentName} + '\', ' + ${comp.actualQty} + ', ' + ${comp.expectedQty} + ')'">
                                                             <i class="bi bi-pencil-fill" style="font-size: 0.75rem;"></i>
                                                         </button>
                                                     </div>
@@ -242,10 +190,44 @@
     </div>
 </div>
 
+<div class="modal fade" id="transferModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-white border-secondary">
+            <form id="transferForm" method="post">
+                <input type="hidden" name="quantity" value="1">
+                <input type="hidden" name="warehouseId" th:value="${warehouse.id}">
+                <input type="hidden" name="signatureBase64" id="sigInput">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">העברת פריט וחתימה</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">מ"א של המקבל:</label>
+                        <input type="text" name="toPersonalNumber" class="form-control bg-dark text-white border-secondary" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">הערה להעברה:</label>
+                        <input type="text" name="note" class="form-control bg-dark text-white border-secondary" placeholder="(אופציונלי)">
+                    </div>
+                    <div class="mb-3 text-center">
+                        <label class="form-label small text-info fw-bold d-block">חתימת המקבל:</label>
+                        <canvas id="sig-canvas" height="150"></canvas>
+                        <button type="button" class="btn btn-sm btn-link text-muted" onclick="clearSig()">נקה חתימה</button>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="submit" class="btn btn-warning w-100 fw-bold text-dark">אשר העברה</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="compModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm">
         <div class="modal-content bg-dark text-white border-secondary shadow-lg">
-            <form th:action="@{/ui/items/update-component}" method="post">
+            <form th:action="@{/items/ui/update-component}" method="post">
                 <input type="hidden" name="itemId" id="compItemId">
                 <input type="hidden" name="componentName" id="compNameInput">
                 <div class="modal-header border-secondary">
@@ -255,12 +237,9 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label small text-muted">Actual Quantity</label>
-                        <input type="number" name="actualQty" id="compActualInput"
-                               class="form-control bg-dark text-white border-secondary" min="0">
+                        <input type="number" name="actualQty" id="compActualInput" class="form-control bg-dark text-white border-secondary" min="0">
                     </div>
-                    <div class="small text-muted text-center">
-                        Expected: <span id="compExpectedLabel" class="fw-bold"></span>
-                    </div>
+                    <div class="small text-muted text-center">Expected: <span id="compExpectedLabel" class="fw-bold"></span></div>
                 </div>
                 <div class="modal-footer border-secondary">
                     <button type="submit" class="btn btn-warning btn-sm w-100 fw-bold text-dark">Save Changes</button>
@@ -297,7 +276,7 @@
 <div class="modal fade" id="notesModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content bg-dark text-white border-secondary shadow-lg">
-            <form th:action="@{/ui/items/update-notes}" method="post">
+            <form th:action="@{/items/ui/update-notes}" method="post">
                 <input type="hidden" name="itemId" id="noteItemId">
                 <div class="modal-header border-secondary">
                     <h5 class="modal-title text-warning"><i class="bi bi-pencil-square me-2"></i>Update Item</h5>
@@ -315,7 +294,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label small text-muted">Notes / Condition:</label>
-                        <textarea name="notes" id="noteTextArea" class="form-control bg-dark text-white border-secondary p-2" rows="4" placeholder="Update condition..."></textarea>
+                        <textarea name="notes" id="noteTextArea" class="form-control bg-dark text-white border-secondary p-2" rows="4"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer border-secondary">
@@ -328,25 +307,56 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 <script>
+    let signaturePad;
+
+    // ניהול גלילה
+    window.onbeforeunload = function() { localStorage.setItem('scrollPos', window.scrollY); };
+    window.onload = function() {
+        const scrollPos = localStorage.getItem('scrollPos');
+        if (scrollPos) { window.scrollTo(0, parseInt(scrollPos)); localStorage.removeItem('scrollPos'); }
+    };
+
+    function openTransferModal(itemId) {
+        const form = document.getElementById('transferForm');
+        form.action = `/ui/items/${itemId}/transfer-request`;
+        const modal = new bootstrap.Modal(document.getElementById('transferModal'));
+        modal.show();
+        setTimeout(() => {
+            const canvas = document.getElementById('sig-canvas');
+            canvas.width = canvas.parentElement.offsetWidth;
+            if (signaturePad) signaturePad.off();
+            signaturePad = new SignaturePad(canvas);
+        }, 500);
+    }
+
+    function clearSig() { if(signaturePad) signaturePad.clear(); }
+
+    document.getElementById('transferForm').onsubmit = async function(e) {
+        e.preventDefault();
+        if (!signaturePad || signaturePad.isEmpty()) { alert("חובה לחתום על הטופס!"); return false; }
+        document.getElementById('sigInput').value = signaturePad.toDataURL();
+        const formData = new FormData(this);
+        try {
+            const response = await fetch(this.action, { method: 'POST', body: new URLSearchParams(formData) });
+            if (response.ok || response.redirected) {
+                localStorage.setItem('scrollPos', window.scrollY);
+                window.location.reload();
+            } else { alert("שגיאה בביצוע ההעברה."); }
+        } catch (error) { console.error("Error:", error); }
+    };
+
     function showInventory() {
         const area = document.getElementById('inventory-display-area');
         area.style.display = 'block';
-        setTimeout(() => {
-            area.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
+        setTimeout(() => { area.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
     }
 
     function openNotesModal(buttonElement) {
-        const itemId = buttonElement.getAttribute('data-item-id');
-        const currentNotes = buttonElement.getAttribute('data-item-notes');
-        const currentStatus = buttonElement.getAttribute('data-item-status');
-
-        document.getElementById('noteItemId').value = itemId;
-        document.getElementById('noteTextArea').value = currentNotes;
-        const statusSelect = document.getElementById('noteItemStatus');
-        if(currentStatus) statusSelect.value = currentStatus;
-
+        document.getElementById('noteItemId').value = buttonElement.getAttribute('data-item-id');
+        document.getElementById('noteTextArea').value = buttonElement.getAttribute('data-item-notes');
+        document.getElementById('noteItemStatus').value = buttonElement.getAttribute('data-item-status');
         new bootstrap.Modal(document.getElementById('notesModal')).show();
     }
 
@@ -357,29 +367,17 @@
         document.getElementById('compActualInput').max = expected;
         document.getElementById('compExpectedLabel').innerText = expected;
         document.getElementById('compTitle').innerText = "Update: " + name;
-
         new bootstrap.Modal(document.getElementById('compModal')).show();
     }
 
     function filterInventory(input) {
         const filter = input.value.toLowerCase();
-        const activePane = input.closest('.tab-pane');
+        const activePane = document.querySelector('.tab-pane.show.active');
+        if (!activePane) return;
         const rows = activePane.querySelectorAll('.main-row');
-
         rows.forEach(row => {
-            const serial = row.querySelector('.col-serial').textContent.toLowerCase();
-            const product = row.querySelector('.col-product').textContent.toLowerCase();
-            const signed = row.querySelector('.col-signed').textContent.toLowerCase();
-
-            if (serial.includes(filter) || product.includes(filter) || signed.includes(filter)) {
-                row.style.display = "";
-            } else {
-                row.style.display = "none";
-                const nextRow = row.nextElementSibling;
-                if (nextRow && nextRow.classList.contains('collapse-row')) {
-                    nextRow.classList.remove('show');
-                }
-            }
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(filter) ? "" : "none";
         });
     }
 </script>

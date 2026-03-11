@@ -33,13 +33,20 @@ public class TransferRequest {
     @Column(name="note")
     private String note;
 
+    // השדה החדש לשמירת החתימה הדיגיטלית
+    @Lob
+    @Column(name="signature_base64", columnDefinition = "TEXT")
+    private String signatureBase64;
+
     @Column(name="created_at", nullable=false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @Column(name="decided_at")
     private LocalDateTime decidedAt;
 
-    // --- Getters & Setters הסטנדרטיים ---
+    public TransferRequest() {}
+
+    // --- Getters & Setters ---
 
     public Long getId() { return id; }
 
@@ -61,26 +68,18 @@ public class TransferRequest {
     public String getNote() { return note; }
     public void setNote(String note) { this.note = note; }
 
+    // Getter ו-Setter לחתימה
+    public String getSignatureBase64() { return signatureBase64; }
+    public void setSignatureBase64(String signatureBase64) { this.signatureBase64 = signatureBase64; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
     public LocalDateTime getDecidedAt() { return decidedAt; }
     public void setDecidedAt(LocalDateTime decidedAt) { this.decidedAt = decidedAt; }
 
-    // --- מתודות עזר למניעת שגיאות ב-Service (חשוב!) ---
-
-    // אם ה-Service עדיין קורא ל-getItemId
-    public Long getItemId() {
-        return (item != null) ? item.getId() : null;
-    }
-
-    // אם ה-Service עדיין קורא ל-getFromUserId
-    public Long getFromUserId() {
-        return (fromUser != null) ? fromUser.getId() : null;
-    }
-
-    // אם ה-Service עדיין קורא ל-getToUserId
-    public Long getToUserId() {
-        return (toUser != null) ? toUser.getId() : null;
-    }
+    // --- מתודות עזר ---
+    public Long getItemId() { return (item != null) ? item.getId() : null; }
+    public Long getFromUserId() { return (fromUser != null) ? fromUser.getId() : null; }
+    public Long getToUserId() { return (toUser != null) ? toUser.getId() : null; }
 }

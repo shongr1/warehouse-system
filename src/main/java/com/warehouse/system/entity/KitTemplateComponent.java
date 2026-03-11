@@ -1,5 +1,6 @@
 package com.warehouse.system.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
@@ -12,6 +13,7 @@ public class KitTemplateComponent {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "item_type_id", nullable = false)
+    @JsonIgnore // מונע לולאה אינסופית בזמן יצירת JSON ומאפשר לטבלה ב-UI להתמלא
     private ItemType kitType;
 
     @Column(name = "component_name", nullable = false)

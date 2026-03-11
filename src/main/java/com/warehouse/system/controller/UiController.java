@@ -13,11 +13,10 @@ import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.List;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.time.format.DateTimeFormatter;
@@ -649,7 +648,8 @@ public class UiController {
 
         return "redirect:" + (referer != null ? referer : "/ui");
     }
-    @GetMapping("/ui/my-transfer-requests") // הוספתי /ui/ בהתחלה
+    @Transactional(readOnly = true) // הוסף את השורה הזו כאן!
+    @GetMapping("/ui/my-transfer-requests")
     public String myTransferRequests(HttpSession session, Model model) {
         if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
 
@@ -657,18 +657,23 @@ public class UiController {
         var me = userRepository.findByPersonalNumber(pn.trim())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        // השליפה הזו היא שמעוררת את השגיאה בגלל שדה ה-signatureBase64
         var requests = transferRequestRepository.findByToUser_IdAndStatus(me.getId(), TransferStatus.PENDING);
 
-        // בדיקה קריטית ב-Console:
         System.out.println("DEBUG: Logged in as ID " + me.getId());
         System.out.println("DEBUG: Found " + requests.size() + " pending requests in DB");
 
+        // תיקון קטן כאן למקרה ש-getItem() או getFromUser() מחזירים null
         var groupedRequests = requests.stream()
-                .collect(java.util.stream.Collectors.groupingBy(req ->
-                        req.getItem().getItemType().getName() + " from " + req.getFromUser().getFullName()));
+                .collect(java.util.stream.Collectors.groupingBy(req -> {
+                    String itemName = (req.getItem() != null && req.getItem().getItemType() != null)
+                            ? req.getItem().getItemType().getName() : "פריט לא ידוע";
+                    String fromUser = (req.getFromUser() != null)
+                            ? req.getFromUser().getFullName() : "שולח לא ידוע";
+                    return itemName + " from " + fromUser;
+                }));
 
         model.addAttribute("groupedRequests", groupedRequests);
-        // אנחנו שולחים גם את הרשימה המקורית למקרה שה-HTML ישן
         model.addAttribute("requests", requests);
 
         return "my-transfer-requests";
@@ -1059,5 +1064,35 @@ public class UiController {
         // 2. חזרה לדף המחסן שממנו הגענו (נניח שזה הדף הנוכחי)
         // אם יש לך את ה-warehouseId, עדיף להחזיר אליו ישירות
         return "redirect:/ui";
+    }
+    @GetMapping("/ui/item-types/next-catalog")
+    @ResponseBody
+    public ResponseEntity<String> getNextCatalog(@RequestParam String prefix, HttpSession session) {
+        if (!AuthController.isLoggedIn(session)) return ResponseEntity.status(401).build();
+
+        String pn = AuthController.currentPn(session);
+        User me = userRepository.findByPersonalNumber(pn).orElseThrow();
+
+        // מוצא את המק"ט האחרון שמתחיל בקידומת הזו
+        String lastCatalog = itemTypeRepository.findTopCatalogNumberByPrefix(prefix, me.getId());
+
+        if (lastCatalog == null || lastCatalog.length() <= prefix.length()) {
+            // אם זה הראשון, נתחיל ב-01 (כדי שיהיה סדר כמו באקסל)
+            return ResponseEntity.ok(prefix + "01");
+        }
+
+        try {
+            String numberPart = lastCatalog.substring(prefix.length());
+            int numberLength = numberPart.length(); // בודק כמה ספרות היו (למשל 2 עבור "03")
+            int nextNum = Integer.parseInt(numberPart.trim()) + 1;
+
+            // יוצר פורמט ששומר על אורך המספר עם אפסים מובילים
+            String formattedNumber = String.format("%0" + numberLength + "d", nextNum);
+
+            return ResponseEntity.ok(prefix + formattedNumber);
+        } catch (Exception e) {
+            // במקרה של תקלה בפירוש המספר, מחזיר פשוט את הבא בתור כברירת מחדל
+            return ResponseEntity.ok(prefix + "01");
+        }
     }
 }

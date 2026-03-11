@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class TransferService {
@@ -13,15 +14,18 @@ public class TransferService {
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
     private final TransferRequestRepository transferRequestRepository;
+    private final TransactionRepository transactionRepository; // הוספנו את המאגר החדש
 
     public TransferService(
             ItemRepository itemRepository,
             TransferRequestRepository transferRequestRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            TransactionRepository transactionRepository // הזרקה לקונסטרקטור
     ) {
         this.itemRepository = itemRepository;
         this.transferRequestRepository = transferRequestRepository;
         this.userRepository = userRepository;
+        this.transactionRepository = transactionRepository;
     }
 
     @Transactional
@@ -45,28 +49,25 @@ public class TransferService {
         itemRepository.save(item);
     }
 
+    // המתודה המעודכנת שמקבלת 6 פרמטרים כולל חתימה
     @Transactional
-    public void createTransferRequest(Long itemId, String fromPn, String toPn, String note, Integer quantity) {
-        // שליפת הפריט
+    public void createTransferRequest(Long itemId, String fromPn, String toPn, String note, Integer quantity, String signatureBase64) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("Item not found"));
 
-        if (item.getStatus() != ItemStatus.SIGNED) {
+        if (item.getStatus() != ItemStatus.SIGNED && item.getStatus() != ItemStatus.TRANSFER_PENDING) {
             throw new RuntimeException("Only SIGNED items can be transferred");
         }
 
-        // בדיקת כמות
         int requestedQty = (quantity != null) ? quantity : 1;
         if (requestedQty <= 0 || requestedQty > item.getQuantity()) {
             throw new RuntimeException("Invalid quantity. Max available: " + item.getQuantity());
         }
 
-        // שליפת המשתמשים כאובייקטים (חיוני ל-Entity החדש)
         var fromUser = item.getSignedBy();
         var toUser = userRepository.findByPersonalNumber(toPn.trim())
                 .orElseThrow(() -> new RuntimeException("Target user not found: " + toPn));
 
-        // יצירת הבקשה - שים לב לשימוש ב-setItem ו-setFromUser/ToUser
         TransferRequest tr = new TransferRequest();
         tr.setItem(item);
         tr.setFromUser(fromUser);
@@ -74,27 +75,24 @@ public class TransferService {
         tr.setQuantity(requestedQty);
         tr.setStatus(TransferStatus.PENDING);
         tr.setNote(note);
+        tr.setSignatureBase64(signatureBase64); // שמירת החתימה בבקשה
         tr.setCreatedAt(LocalDateTime.now());
 
         transferRequestRepository.save(tr);
 
-        // אם מעבירים את כל הכמות, נסמן את הפריט כ"ממתין להעברה"
         if (requestedQty == item.getQuantity()) {
             item.setStatus(ItemStatus.TRANSFER_PENDING);
             itemRepository.save(item);
         }
     }
-    @Transactional
-    public void approveBatch(java.util.List<Long> ids, String approverPn) {
-        if (ids == null || ids.isEmpty()) return;
 
+    @Transactional
+    public void approveBatch(List<Long> ids, String approverPn) {
+        if (ids == null || ids.isEmpty()) return;
         for (Long id : ids) {
-            // אנחנו קוראים למתודה הקיימת כדי לשמור על עקביות הלוגיקה
             this.approve(id, approverPn);
         }
     }
-
-
 
     @Transactional
     public void approve(Long transferRequestId, String approverPn) {
@@ -108,17 +106,24 @@ public class TransferService {
             throw new RuntimeException("Request is no longer pending");
         }
 
-        // שימוש ב-tr.getItem() במקום שליפה ידנית נוספת מה-Repo
         Item item = tr.getItem();
         LocalDateTime now = LocalDateTime.now();
         Integer transferQty = tr.getQuantity();
 
-        // בדיקה אם מחזירים למחסן (המשתמש המאשר הוא בעל המחסן)
+        // יצירת Transaction (תיעוד היסטורי קבוע) לפני שינוי המלאי
+        Transaction transaction = new Transaction();
+        transaction.setItem(item);
+        transaction.setIssuer(tr.getFromUser());
+        transaction.setReceiver(tr.getToUser());
+        transaction.setSignatureBase64(tr.getSignatureBase64()); // העברת החתימה מהבקשה להיסטוריה
+        transaction.setType("TRANSFER");
+        transaction.setConditionNote(tr.getNote());
+        transactionRepository.save(transaction);
+
         boolean isReturnToWarehouse = item.getWarehouse().getOwner() != null &&
                 item.getWarehouse().getOwner().getId().equals(me.getId());
 
         if (item.getQuantity() > transferQty) {
-            // פיצול פריט (נשאר חלק אצלי, חלק עובר)
             item.setQuantity(item.getQuantity() - transferQty);
             item.setStatus(ItemStatus.SIGNED);
             itemRepository.save(item);
@@ -127,7 +132,6 @@ public class TransferService {
             newItem.setItemType(item.getItemType());
             newItem.setWarehouse(item.getWarehouse());
             newItem.setCategory(item.getCategory());
-            newItem.setSerialNumber(null); // ב-Bulk לרוב אין סיריאלי ייחודי לכל יחידה מפוצלת
             newItem.setQuantity(transferQty);
 
             if (isReturnToWarehouse) {
@@ -140,9 +144,7 @@ public class TransferService {
                 newItem.setSignatureExpiryDate(now.plusYears(1));
             }
             itemRepository.save(newItem);
-
         } else {
-            // העברת כל הפריט (שינוי סטטוס/חתימה קיים)
             if (isReturnToWarehouse) {
                 item.setSignedBy(null);
                 item.setStatus(ItemStatus.IN_STOCK);
@@ -168,7 +170,6 @@ public class TransferService {
                 .orElseThrow(() -> new RuntimeException("Request not found"));
 
         Item item = tr.getItem();
-
         if (item.getStatus() == ItemStatus.TRANSFER_PENDING) {
             item.setStatus(ItemStatus.SIGNED);
             itemRepository.save(item);

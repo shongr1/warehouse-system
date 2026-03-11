@@ -32,24 +32,30 @@ public class ItemTransferUiController {
     @PostMapping("/ui/items/{itemId}/transfer-request")
     public String submit(@PathVariable Long itemId,
                          CreateTransferRequestForm form,
-                         @RequestParam(required = false) Long itemTypeId, // חשוב! וודא שזה נשלח מה-HTML
-                         @RequestParam(required = false) Long warehouseId, // חשוב! וודא שזה נשלח מה-HTML
+                         @RequestParam(required = false) Long itemTypeId,
+                         @RequestParam(required = false) Long warehouseId,
                          HttpSession session,
                          RedirectAttributes ra) {
 
         if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
 
-        // שליפת המשתמש הנוכחי
         String fromPn = AuthController.currentPn(session);
         User me = userRepository.findByPersonalNumber(fromPn)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         try {
+            // טיפול בחתימה: אם היא ריקה, אנחנו לא קורסים
+            String signature = form.getSignatureBase64();
+            if (signature == null || signature.isEmpty()) {
+                // במקום לזרוק שגיאה, אנחנו שמים ערך ריק או מדפיסים ללוג
+                System.out.println("DEBUG: Transfer requested without digital signature string.");
+                signature = "";
+            }
+
             int requestedQty = form.getQuantity();
 
-            // אם ביקשת יותר מ-1, אנחנו מבצעים העברה חכמה (Bulk)
             if (requestedQty > 1) {
-                // מוצאים את כל הפריטים מאותו סוג שחתומים עליי
+                // לוגיקה עבור העברה קבוצתית
                 List<Item> myItems = itemRepository.findByWarehouseId(warehouseId != null ? warehouseId : 1L).stream()
                         .filter(i -> i.getItemType().getId().equals(itemTypeId))
                         .filter(i -> i.getSignedBy() != null && i.getSignedBy().getId().equals(me.getId()))
@@ -57,21 +63,21 @@ public class ItemTransferUiController {
                         .toList();
 
                 if (myItems.size() < requestedQty) {
-                    throw new RuntimeException("לא נמצאו מספיק פריטים חתומים להעברה. נמצאו רק: " + myItems.size());
+                    throw new RuntimeException("לא נמצאו מספיק פריטים חתומים. נמצאו רק: " + myItems.size());
                 }
 
-                // מעבירים כל פריט בנפרד עם כמות 1 (כדי לא לשבור את ה-Service)
                 for (Item item : myItems) {
-                    transferService.createTransferRequest(item.getId(), fromPn, form.getToPersonalNumber(), form.getNote(), 1);
+                    transferService.createTransferRequest(item.getId(), fromPn, form.getToPersonalNumber(), form.getNote(), 1, signature);
                 }
-                ra.addFlashAttribute("success", "נשלחו " + myItems.size() + " בקשות העברה בהצלחה.");
+                ra.addFlashAttribute("success", "נשלחו " + myItems.size() + " בקשות העברה.");
             } else {
-                // העברה רגילה של פריט בודד
-                transferService.createTransferRequest(itemId, fromPn, form.getToPersonalNumber(), form.getNote(), 1);
+                // העברה בודדת
+                transferService.createTransferRequest(itemId, fromPn, form.getToPersonalNumber(), form.getNote(), 1, signature);
                 ra.addFlashAttribute("success", "בקשת ההעברה נשלחה בהצלחה.");
             }
 
         } catch (Exception e) {
+            // אם בכל זאת יש שגיאה (כמו כמות לא תקינה), נציג אותה
             ra.addFlashAttribute("error", e.getMessage());
         }
 

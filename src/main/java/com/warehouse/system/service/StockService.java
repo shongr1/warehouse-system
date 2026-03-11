@@ -27,52 +27,73 @@ public class StockService {
     @Autowired
     private WarehouseRepository warehouseRepository;
 
+    @Autowired
+    private CategoryRepository categoryRepository;
+
     @Transactional
-    public void addStock(StockForm form) {
+    public void processStockEntry(StockForm form, User currentUser) {
         Warehouse warehouse = warehouseRepository.findById(form.getWarehouseId())
                 .orElseThrow(() -> new RuntimeException("Warehouse not found"));
+
         ItemType itemType = itemTypeRepository.findById(form.getItemTypeId())
                 .orElseThrow(() -> new RuntimeException("Item Type not found"));
+
+        Category category = null;
+        if (form.getCategoryName() != null && !form.getCategoryName().isEmpty()) {
+            category = categoryRepository.findByName(form.getCategoryName()).orElse(null);
+        }
 
         List<String> manualSerials = parseSerials(form);
         int quantityToAdd = (manualSerials.isEmpty()) ? form.getQuantity() : manualSerials.size();
 
-        if (manualSerials.isEmpty() && (form.getPrefix() == null || form.getPrefix().isBlank())) {
-            form.setPrefix(itemType.getName().substring(0, Math.min(itemType.getName().length(), 3)).toUpperCase() + "-");
-        }
-
-        Integer lastNumber = 0;
-        if (manualSerials.isEmpty()) {
-            lastNumber = itemRepository.findMaxNumberByPrefix(form.getPrefix() + "%");
-            if (lastNumber == null) lastNumber = 0;
-        }
-
+        // לוגיקה ליצירת הפריטים
         for (int i = 0; i < quantityToAdd; i++) {
             Item item = new Item();
             item.setItemType(itemType);
             item.setWarehouse(warehouse);
+            item.setCategory(category);
+            item.setOwner(currentUser);
             item.setStatus(ItemStatus.IN_STOCK);
 
+            // טיפול במספרים סידוריים
             if (!manualSerials.isEmpty()) {
                 String sn = manualSerials.get(i);
                 if (itemRepository.existsBySerialNumber(sn)) {
                     throw new RuntimeException("סריאל כפול! המספר " + sn + " כבר קיים.");
                 }
                 item.setSerialNumber(sn);
-            } else {
-                String internalId = form.getPrefix() + String.format("%02d", lastNumber + i + 1);
-                item.setInternalCatalogId(internalId);
+            } else if ("AUTO".equals(form.getSerialMode()) && form.getStartSerial() != null && !form.getStartSerial().isEmpty()) {
+                try {
+                    long start = Long.parseLong(form.getStartSerial());
+                    item.setSerialNumber(String.valueOf(start + i));
+                } catch (NumberFormatException e) {
+                    // אם זה לא מספר, נשתמש בברירת מחדל של המערכת
+                }
             }
 
-            // לוגיקה חדשה: אם זה Kit, ניצור לו את הרכיבים ההתחלתיים מהתקן של ה-ItemType
-            if (itemType.isKit() && itemType.getKitTemplateComponents() != null) {
+            // --- העתקת הקיט מהתקן (Template) לפריט הספציפי ---
+            // אנחנו משתמשים במידע שהגיע מה-Form (כדי לאפשר שינויים ידניים בטופס לפני השמירה)
+            if (form.isKit() && form.getKitComponents() != null && !form.getKitComponents().isEmpty()) {
+                for (var compDto : form.getKitComponents()) {
+                    KitComponent comp = new KitComponent();
+                    comp.setItem(item);
+                    comp.setComponentName(compDto.getComponentName());
+                    comp.setSubCatalogNumber(compDto.getSubCatalogNumber());
+                    comp.setExpectedQuantity(compDto.getQuantity());
+                    comp.setActualQuantity(compDto.getQuantity());
+                    comp.setStatus("AVAILABLE");
+                    item.getComponents().add(comp);
+                }
+            }
+            // גיבוי: אם לא הגיעו רכיבים בטופס אבל ה-Type מוגדר כקיט, ניקח מה-Template
+            else if (itemType.isKit() && itemType.getKitTemplateComponents() != null) {
                 for (KitTemplateComponent template : itemType.getKitTemplateComponents()) {
                     KitComponent comp = new KitComponent();
                     comp.setItem(item);
                     comp.setComponentName(template.getComponentName());
                     comp.setSubCatalogNumber(template.getSubCatalogNumber());
                     comp.setExpectedQuantity(template.getQuantity());
-                    comp.setActualQuantity(template.getQuantity()); // בהתחלה הערכה מלאה
+                    comp.setActualQuantity(template.getQuantity());
                     comp.setStatus("AVAILABLE");
                     item.getComponents().add(comp);
                 }
@@ -89,7 +110,6 @@ public class StockService {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("Item not found"));
 
-        // חיפוש הרכיב בתוך ה-Item
         KitComponent targetComp = item.getComponents().stream()
                 .filter(c -> c.getComponentName().equals(componentName))
                 .findFirst()
@@ -97,11 +117,8 @@ public class StockService {
 
         targetComp.setActualQuantity(actualQty);
 
-        // עדכון סטטוס אוטומטי לפי הכמות
         if (actualQty < targetComp.getExpectedQuantity()) {
             targetComp.setStatus("MISSING");
-        } else if (actualQty > targetComp.getExpectedQuantity()) {
-            targetComp.setStatus("OVER_STOCK"); // אופציונלי
         } else {
             targetComp.setStatus("AVAILABLE");
         }
