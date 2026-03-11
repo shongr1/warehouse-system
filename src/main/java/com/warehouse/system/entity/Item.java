@@ -131,4 +131,6 @@ public class Item {
     public void setKitComponents(List<KitComponent> kitComponents) {
         this.components = kitComponents;
     }
+
+
 }

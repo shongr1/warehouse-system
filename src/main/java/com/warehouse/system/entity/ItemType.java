@@ -24,6 +24,11 @@ public class ItemType {
     @Column(name = "is_kit", nullable = false)
     private boolean kit = false;
 
+    // --- השדה החדש: בעלים של סוג המוצר ---
+    @ManyToOne
+    @JoinColumn(name = "owner_user_id")
+    private User owner;
+
     @OneToMany(
             mappedBy = "kitType",
             cascade = CascadeType.ALL,
@@ -51,6 +56,9 @@ public class ItemType {
     public boolean isKit() { return kit; }
     public void setKit(boolean kit) { this.kit = kit; }
 
+    public User getOwner() { return owner; }
+    public void setOwner(User owner) { this.owner = owner; }
+
     public List<KitTemplateComponent> getKitTemplateComponents() {
         return kitTemplateComponents;
     }
@@ -74,8 +82,6 @@ public class ItemType {
             component.setKitType(null);
         }
     }
-
-    // --- מתודות תאימות ל-UiController (פותר את ה-Cannot Resolve) ---
 
     public void addTemplateComponent(KitTemplateComponent component) {
         this.addKitTemplateComponent(component);

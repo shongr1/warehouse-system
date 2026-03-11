@@ -1,5 +1,5 @@
 package com.warehouse.system.controller;
-
+import java.util.HashMap;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
@@ -380,16 +380,24 @@ public class UiController {
         return out;
     }
 
-    // ---------- WAREHOUSE DETAILS ----------
+    // ---------- WAREHOUSE DETAILS (מעודכן לסינון לפי בעלים) ----------
     @GetMapping("/ui/warehouses/{id}")
     public String warehouseDetails(@PathVariable Long id, HttpSession session, Model model) {
         if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
-        var me = AuthController.currentUser(session);
+
+        // שליפת המשתמש המחובר מהסשן ומבסיס הנתונים
+        String pn = AuthController.currentPn(session);
+        var me = userRepository.findByPersonalNumber(pn)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         Warehouse warehouse = warehouseRepository.findById(id).orElseThrow();
-        List<Item> allItems = itemRepository.findByWarehouseId(id);
 
-        // קטגוריות מה-DB
+        // התיקון הקריטי: שולף רק פריטים ששייכים למשתמש המחובר (owner) בתוך המחסן הספציפי
+        List<Item> allItems = itemRepository.findByOwner(me).stream()
+                .filter(item -> item.getWarehouse().getId().equals(id))
+                .collect(Collectors.toList());
+
+        // קטגוריות מה-DB המשוייכות למחסן
         List<Category> allCategories = categoryRepository.findByWarehouseId(id);
 
         // שינוי המפה ל-StockGroup כדי לאחד שורות כפולות
@@ -421,11 +429,15 @@ public class UiController {
             inventoryMap.put(catName, stockGroups);
         });
 
-        // צ'קליסט וסיכומי מלאי (נשאר כפי שהיה)
+        // צ'קליסט וסיכומי מלאי
         List<Long> itemIds = allItems.stream().map(Item::getId).toList();
-        Map<Long, List<KitItemComponent>> kitChecklist = kitItemComponentRepository.findAllByKitItem_IdIn(itemIds)
-                .stream()
-                .collect(Collectors.groupingBy(comp -> comp.getKitItem().getId()));
+        Map<Long, List<KitItemComponent>> kitChecklist = new HashMap<>();
+
+        if (!itemIds.isEmpty()) {
+            kitChecklist = kitItemComponentRepository.findAllByKitItem_IdIn(itemIds)
+                    .stream()
+                    .collect(Collectors.groupingBy(comp -> comp.getKitItem().getId()));
+        }
 
         var stocks = allItems.stream()
                 .collect(Collectors.groupingBy(Item::getItemType, Collectors.counting()))
@@ -461,37 +473,44 @@ public class UiController {
         return "warehouse-stock";
     }
 **/
-    // ---------- ITEM TYPES ----------
     @PostMapping("/ui/item-types")
     public String createItemType(CreateItemTypeForm form,
                                  @RequestParam Long warehouseId,
                                  HttpSession session) {
 
+        // 1. בדיקת התחברות
         if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
+
+        // 2. שליפת המשתמש המחובר מהדאטה-בייס כדי להצמיד אותו כבעלים
+        String pn = AuthController.currentPn(session);
+        var me = userRepository.findByPersonalNumber(pn)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         ItemType it = new ItemType();
         it.setCatalogNumber(form.getCatalogNumber());
         it.setName(form.getName());
         it.setSerialized(form.isSerialized());
 
-        // --- הוספה עבור ערכות (Kits) ---
-        it.setKit(form.isKit()); // וודא שב-Form יש שדה כזה
+        // --- התיקון הקריטי: הגדרת הבעלים של המק"ט ---
+        it.setOwner(me);
+        // ------------------------------------------
+
+        // הוספה עבור ערכות (Kits)
+        it.setKit(form.isKit());
 
         if (form.isKit() && form.getComponents() != null) {
             for (KitComponent comp : form.getComponents()) {
-                // יצירת תבנית חדשה מתוך הנתונים שהגיעו מהטופס
                 KitTemplateComponent template = new KitTemplateComponent();
                 template.setComponentName(comp.getComponentName());
                 template.setSubCatalogNumber(comp.getSubCatalogNumber());
-                template.setQuantity(comp.getQuantity()); // הכמות הנדרשת בתקן
+                template.setQuantity(comp.getQuantity());
 
-                // עכשיו it (שהוא ItemType) יקבל את זה בשמחה
                 it.addTemplateComponent(template);
             }
         }
-        // -------------------------------
 
-        itemTypeRepository.save(it); // בזכות CascadeType.ALL, זה ישמור גם את הרכיבים
+        // שמירת ה-ItemType עם ה-Owner החדש
+        itemTypeRepository.save(it);
 
         return "redirect:/ui/warehouses/" + warehouseId + "/add";
     }
@@ -520,15 +539,27 @@ public class UiController {
 
     @PostMapping("/ui/item-types/ajax")
     public ResponseEntity<?> createItemTypeAjax(CreateItemTypeForm form, HttpSession session) {
-        if (!AuthController.isLoggedIn(session)) return ResponseEntity.status(401).body("Not logged in");
+        if (!AuthController.isLoggedIn(session)) {
+            return ResponseEntity.status(401).body("Not logged in");
+        }
+
+        // 1. שליפת המשתמש המחובר מהסשן ומבסיס הנתונים
+        String pn = AuthController.currentPn(session);
+        var me = userRepository.findByPersonalNumber(pn)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         ItemType it = new ItemType();
         it.setCatalogNumber(form.getCatalogNumber().trim());
         it.setName(form.getName().trim());
         it.setSerialized(form.isSerialized());
 
+        // 2. הצמדת הבעלות למשתמש הנוכחי
+        it.setOwner(me);
+
+        // 3. שמירת סוג הפריט החדש
         ItemType saved = itemTypeRepository.save(it);
 
+        // 4. החזרת התשובה ל-Frontend
         return ResponseEntity.ok(Map.of(
                 "id", saved.getId(),
                 "catalogNumber", saved.getCatalogNumber(),
@@ -538,36 +569,47 @@ public class UiController {
     }
     @GetMapping("/ui/warehouses/{id}/add")
     public String addProductsPage(@PathVariable Long id,
-                                  @RequestParam(required = false) String cat, // קליטת הקטגוריה מהכפתור ב-UI
+                                  @RequestParam(required = false) String cat,
                                   HttpSession session,
                                   Model model) {
 
-        if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
+        // 1. בדיקת התחברות
+        if (!AuthController.isLoggedIn(session)) {
+            return "redirect:/ui/login";
+        }
 
+        // 2. שליפת פרטי המשתמש המחובר
         String pn = AuthController.currentPn(session);
+        var me = userRepository.findByPersonalNumber(pn)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // 3. שליפת המחסן ובדיקת הרשאות
         var warehouse = warehouseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Warehouse not found"));
 
-        // בדיקת הרשאות
         String ownerPn = warehouse.getOwner() == null ? null : warehouse.getOwner().getPersonalNumber();
         if (ownerPn == null || !pn.equals(ownerPn.trim())) {
             throw new RuntimeException("Forbidden: this warehouse is not yours");
         }
 
+        // 4. סינון סוגי המוצרים (ItemTypes) - OWNER אישי בלבד
+        // הסרנו את התנאי של it.getOwner() == null כדי שלא יראו מוצרים של אחרים או כלליים
+        List<ItemType> filteredItemTypes = itemTypeRepository.findAll().stream()
+                .filter(it -> it.getOwner() != null && it.getOwner().getId().equals(me.getId()))
+                .collect(Collectors.toList());
+
+        // 5. הכנת הטופס והמודל
         StockForm stockForm = new StockForm();
         stockForm.setWarehouseId(id);
 
-        // אם הגיע שם קטגוריה ב-URL, אנחנו מעבירים אותו למודל
         model.addAttribute("selectedCategoryName", cat);
-
         model.addAttribute("warehouse", warehouse);
-        model.addAttribute("itemTypes", itemTypeRepository.findAll());
+        model.addAttribute("itemTypes", filteredItemTypes); // עכשיו יופיעו רק סוגים שאתה יצרת אישית
         model.addAttribute("stockForm", stockForm);
         model.addAttribute("createItemTypeForm", new CreateItemTypeForm());
 
         return "warehouse-add-products";
     }
-
 
     @GetMapping("/ui/warehouses/view")
     public String legacyView(@RequestParam Long id) {

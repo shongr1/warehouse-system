@@ -26,7 +26,7 @@ import java.util.List;
 public class TransferPdfController {
 
     private final TransferRequestRepository transferRequestRepository;
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public TransferPdfController(TransferRequestRepository transferRequestRepository) {
         this.transferRequestRepository = transferRequestRepository;
@@ -51,7 +51,7 @@ public class TransferPdfController {
         if (requests.isEmpty()) return;
 
         response.setContentType("application/pdf");
-        response.setHeader("Content-Disposition", "inline; filename=transfer_summary.pdf");
+        response.setHeader("Content-Disposition", "inline; filename=form_1008.pdf");
 
         try (OutputStream os = response.getOutputStream()) {
             buildFullBulkPdf(os, requests);
@@ -59,83 +59,84 @@ public class TransferPdfController {
     }
 
     private void buildFullBulkPdf(OutputStream os, List<TransferRequest> requests) throws Exception {
-        // דף לרוחב כדי שכל העמודות ייכנסו יפה (Product, SN, Catalog, Warehouse, Location)
-        Document doc = new Document(PageSize.A4.rotate(), 30, 30, 30, 30);
+        // הגדרת מסמך A4 עם שוליים תקניים
+        Document doc = new Document(PageSize.A4, 25, 25, 25, 25);
         PdfWriter writer = PdfWriter.getInstance(doc, os);
         doc.open();
 
-        Font titleF = hebrew(22, Font.BOLD);
-        Font headerF = hebrew(12, Font.BOLD);
+        Font titleF = hebrew(24, Font.BOLD);
+        Font headerF = hebrew(11, Font.BOLD);
         Font normalF = hebrew(11, Font.NORMAL);
         Font smallF = hebrew(9, Font.NORMAL);
 
-        // --- Header Section ---
-        PdfPTable headerTable = new PdfPTable(2);
-        headerTable.setWidthPercentage(100);
-        headerTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        headerTable.setWidths(new float[]{75, 25});
-
-        PdfPCell tCell = rtlCell("דיווח ריכוז העברת ציוד", titleF, Element.ALIGN_CENTER, false);
-        tCell.setBorder(Rectangle.NO_BORDER);
-        headerTable.addCell(tCell);
-
-        PdfPCell dCell = rtlCell("הופק בתאריך: " + LocalDateTime.now().format(FMT), smallF, Element.ALIGN_LEFT, false);
-        dCell.setBorder(Rectangle.NO_BORDER);
-        headerTable.addCell(dCell);
-        doc.add(headerTable);
-
-        addSpacer(doc, 15);
-
-        // --- Parties Info (From/To) ---
-        TransferRequest first = requests.get(0);
-        PdfPTable parties = new PdfPTable(2);
-        parties.setWidthPercentage(100);
-        parties.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        parties.addCell(block("מוסר:", first.getFromUser().getFullName() + " (" + first.getFromUser().getPersonalNumber() + ")", headerF, normalF));
-        parties.addCell(block("מקבל:", first.getToUser().getFullName() + " (" + first.getToUser().getPersonalNumber() + ")", headerF, normalF));
-        doc.add(parties);
+        // --- כותרת ראשית ---
+        PdfPTable titleTab = new PdfPTable(1);
+        titleTab.setWidthPercentage(100);
+        titleTab.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        titleTab.addCell(noBorderCell("שובר השאלת אפסניה", titleF, Element.ALIGN_CENTER));
+        doc.add(titleTab);
 
         addSpacer(doc, 20);
 
-        // --- Items Table (The core of the bulk) ---
-        // עמודות: מוצר, מק"ט, מחסן, מספר סיריאלי, מיקום, סטטוס
-        PdfPTable table = new PdfPTable(6);
+        // --- טבלת פרטי העברה (מאת/אל/מיקום) ---
+        TransferRequest first = requests.get(0);
+        PdfPTable infoTable = new PdfPTable(3);
+        infoTable.setWidthPercentage(100);
+        infoTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        infoTable.setWidths(new float[]{35, 30, 35});
+
+        // ימין: מאת (המוסר)
+        infoTable.addCell(rtlCell("מאת (המוסר):\n" + first.getFromUser().getFullName(), smallF, Element.ALIGN_RIGHT, false));
+
+        // מרכז: מיקום (סדר מילים הפוך לטובת תצוגה נכונה ב-PDF)
+        infoTable.addCell(rtlCell("מיקום:בהד 20 ", smallF, Element.ALIGN_CENTER, true));
+
+        // שמאל: אל (המקבל)
+        infoTable.addCell(rtlCell("אל (המקבל):\n" + first.getToUser().getFullName(), smallF, Element.ALIGN_RIGHT, false));
+        doc.add(infoTable);
+
+        addSpacer(doc, 10);
+
+        // --- טבלת פריטים ---
+        PdfPTable table = new PdfPTable(5);
         table.setWidthPercentage(100);
         table.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        table.setWidths(new float[]{25, 15, 15, 20, 15, 10});
+        table.setWidths(new float[]{15, 45, 10, 10, 20});
 
-        table.addCell(rtlCell("מוצר", headerF, Element.ALIGN_CENTER, true));
-        table.addCell(rtlCell("קטלוג/מק\"ט", headerF, Element.ALIGN_CENTER, true));
-        table.addCell(rtlCell("מחסן", headerF, Element.ALIGN_CENTER, true));
-        table.addCell(rtlCell("מספר סיריאלי", headerF, Element.ALIGN_CENTER, true));
-        table.addCell(rtlCell("מיקום", headerF, Element.ALIGN_CENTER, true));
+        table.addCell(rtlCell("מסט\"ב", headerF, Element.ALIGN_CENTER, true));
+        table.addCell(rtlCell("שם פריט", headerF, Element.ALIGN_CENTER, true));
+        table.addCell(rtlCell("יח' רישום", headerF, Element.ALIGN_CENTER, true));
         table.addCell(rtlCell("כמות", headerF, Element.ALIGN_CENTER, true));
+        table.addCell(rtlCell("סיריאל / הערות", headerF, Element.ALIGN_CENTER, true));
 
         for (TransferRequest tr : requests) {
             Item item = tr.getItem();
-            table.addCell(rtlCell(item.getItemType().getName(), normalF, Element.ALIGN_RIGHT, false));
             table.addCell(rtlCell(item.getItemType().getCatalogNumber(), normalF, Element.ALIGN_CENTER, false));
-            table.addCell(rtlCell(item.getWarehouse().getName(), normalF, Element.ALIGN_CENTER, false));
-            table.addCell(rtlCell(item.getSerialNumber() != null ? item.getSerialNumber() : "Bulk", normalF, Element.ALIGN_CENTER, false));
-            table.addCell(rtlCell(item.getLocation(), normalF, Element.ALIGN_CENTER, false));
+            table.addCell(rtlCell(item.getItemType().getName(), normalF, Element.ALIGN_RIGHT, false));
+            table.addCell(rtlCell("יח'", normalF, Element.ALIGN_CENTER, false));
             table.addCell(rtlCell("1", normalF, Element.ALIGN_CENTER, false));
+            table.addCell(rtlCell(item.getSerialNumber() != null ? item.getSerialNumber() : "—", normalF, Element.ALIGN_CENTER, false));
+        }
+
+        // השלמת שורות ריקות למראה טופס 1008 מלא
+        for (int i = 0; i < 12; i++) {
+            for (int j = 0; j < 5; j++) table.addCell(rtlCell(" ", normalF, Element.ALIGN_CENTER, false));
         }
         doc.add(table);
 
         addSpacer(doc, 30);
 
-        // --- Signatures ---
-        PdfPTable sigs = new PdfPTable(2);
-        sigs.setWidthPercentage(100);
-        sigs.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        sigs.addCell(signatureBox("חתימת מוסר:", normalF));
-        sigs.addCell(signatureBox("חתימת מקבל:", normalF));
-        doc.add(sigs);
+        // --- חתימות ---
+        PdfPTable footer = new PdfPTable(2);
+        footer.setWidthPercentage(100);
+        footer.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+
+        footer.addCell(sigBox("פרטי המוסר", first.getFromUser(), smallF, headerF));
+        footer.addCell(sigBox("פרטי המקבל", first.getToUser(), smallF, headerF));
+        doc.add(footer);
 
         doc.close();
     }
-
-    // --- Helper Methods (לשמירה על ה-RTL והעברית) ---
 
     private Font hebrew(float size, int style) throws Exception {
         ClassPathResource res = new ClassPathResource("fonts/NotoSansHebrew-Regular.ttf");
@@ -143,32 +144,33 @@ public class TransferPdfController {
         return new Font(bf, size, style);
     }
 
-    private PdfPCell rtlCell(String value, Font font, int align, boolean header) {
-        PdfPCell c = new PdfPCell(new Phrase(value != null ? value : "—", font));
-        c.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        c.setHorizontalAlignment(align);
-        c.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        c.setPadding(8f);
-        if (header) c.setBackgroundColor(new Color(230, 230, 230));
-        return c;
-    }
-
-    private PdfPCell block(String title, String value, Font titleFont, Font valueFont) {
-        PdfPCell cell = new PdfPCell();
+    private PdfPCell rtlCell(String text, Font font, int align, boolean gray) {
+        PdfPCell cell = new PdfPCell(new Phrase(text != null ? text : "", font));
         cell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        cell.setPadding(10f);
-        Paragraph p1 = new Paragraph(title, titleFont);
-        Paragraph p2 = new Paragraph(value, valueFont);
-        cell.addElement(p1);
-        cell.addElement(p2);
+        cell.setHorizontalAlignment(align);
+        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        cell.setPadding(6f);
+        if (gray) cell.setBackgroundColor(new Color(245, 245, 245));
         return cell;
     }
 
-    private PdfPCell signatureBox(String label, Font font) {
+    private PdfPCell noBorderCell(String text, Font font, int align) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, font));
+        cell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        cell.setHorizontalAlignment(align);
+        cell.setBorder(Rectangle.NO_BORDER);
+        return cell;
+    }
+
+    private PdfPCell sigBox(String title, com.warehouse.system.entity.User user, Font sF, Font hF) {
         PdfPCell cell = new PdfPCell();
         cell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        cell.setPadding(20f);
-        cell.addElement(new Paragraph(label + " ____________________", font));
+        cell.setPadding(10f);
+        cell.addElement(new Paragraph(title + ":", hF));
+        cell.addElement(new Paragraph("תאריך: " + LocalDateTime.now().format(DATE_FMT), sF));
+        cell.addElement(new Paragraph("שם: " + user.getFullName(), sF));
+        cell.addElement(new Paragraph("מ.א: " + user.getPersonalNumber(), sF));
+        cell.addElement(new Paragraph("חתימה: ________________", sF));
         return cell;
     }
 
