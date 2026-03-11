@@ -83,4 +83,22 @@ public class ItemTransferUiController {
 
         return "redirect:/ui/warehouses/" + (warehouseId != null ? warehouseId : "1");
     }
+    @PostMapping("/ui/items/bulk-generate")
+    public String bulkGenerate(@RequestParam Long warehouseId,
+                               @RequestParam Long itemTypeId,
+                               @RequestParam(required = false) String catalogNumber,
+                               @RequestParam String prefix,
+                               @RequestParam int startNum,
+                               @RequestParam int endNum,
+                               RedirectAttributes ra) {
+        try {
+            // קריאה לשירות שיבצע את היצירה
+            transferService.generateBulkItems(warehouseId, itemTypeId, catalogNumber, prefix, startNum, endNum);
+
+            ra.addFlashAttribute("success", "הפעולה הצליחה! נוצרו " + (endNum - startNum + 1) + " פריטים.");
+        } catch (Exception e) {
+            ra.addFlashAttribute("error", "שגיאה ביצירת פריטים: " + e.getMessage());
+        }
+        return "redirect:/ui/warehouses/" + warehouseId;
+    }
 }

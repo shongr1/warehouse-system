@@ -9,30 +9,27 @@
 
     <style>
         .rotate-icon { transition: transform 0.2s; cursor: pointer; display: inline-block; color: #0dcaf0; }
-        .rotate-icon[aria-expanded="true"] { transform: rotate(90deg); color: #ffc107; }
+        .rotate-icon[aria-expanded="true"] { transform: rotate(-90deg); color: #ffc107; }
         .main-row:hover { background: rgba(255,255,255,0.05) !important; }
-        .kit-row { background: rgba(13, 202, 240, 0.05) !important; border-left: 3px solid #0dcaf0 !important; }
-        .collapse-row { background: rgba(255,255,255,0.02); border-left: 4px solid #0dcaf0; }
+        .bulk-row { background: rgba(13, 202, 240, 0.08) !important; border-bottom: 1px solid rgba(13, 202, 240, 0.2) !important; }
+        .collapse-area { background: rgba(0, 0, 0, 0.2); border-right: 3px solid #0dcaf0; }
         .badge-kit { font-size: 0.65rem; vertical-align: middle; padding: 0.2em 0.5em; box-shadow: 0 0 8px rgba(13, 202, 240, 0.4); }
         .category-card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 15px; transition: all 0.3s ease; cursor: pointer; min-width: 160px; }
         .category-card:hover { background: rgba(255, 255, 255, 0.1); transform: translateY(-5px); }
         .category-card.active { background: rgba(13, 110, 253, 0.2) !important; border-color: #0d6efd !important; }
         .count-circle { font-size: 1.8rem; font-weight: 800; color: #0dcaf0; }
         .glass-card { background: rgba(255, 255, 255, 0.05); border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); }
-        .kit-comp-item { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 6px 0; }
-        .kit-comp-item:last-child { border-bottom: none; }
-        .status-dot { font-size: 0.7rem; margin-right: 8px; }
         .note-text { font-size: 0.75rem; color: #ffc107; opacity: 0.8; }
         .search-container { position: relative; max-width: 400px; width: 100%; }
-        .search-input { padding-left: 40px; border-radius: 20px; background: rgba(255,255,255,0.08) !important; border: 1px solid rgba(255,255,255,0.2) !important; transition: all 0.2s; }
-        .search-input:focus { background: rgba(255,255,255,0.12) !important; border-color: #0dcaf0 !important; box-shadow: 0 0 10px rgba(13, 202, 240, 0.2); }
-        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #6c757d; z-index: 5; }
+        .search-input { padding-right: 40px; border-radius: 20px; background: rgba(255,255,255,0.08) !important; border: 1px solid rgba(255,255,255,0.2) !important; transition: all 0.2s; }
+        .search-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #6c757d; z-index: 5; }
         #sig-canvas { border: 1px solid #ced4da; background: #fff; border-radius: 4px; cursor: crosshair; touch-action: none; width: 100%; }
+        .inner-item-row { border-bottom: 1px solid rgba(255,255,255,0.05); }
     </style>
 </head>
 
 <body class="dashboard-page bg-dark text-white">
-<div class="container py-5">
+<div class="container py-5 text-end" dir="rtl">
 
     <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
         <strong th:text="${error}">Error</strong>
@@ -49,17 +46,17 @@
             <div class="text-muted small">
                 <i class="bi bi-geo-alt"></i> <span th:text="${warehouse.location}">Location</span>
                 <span class="mx-2">•</span>
-                <a th:href="@{/ui/warehouses/{id}(id=${warehouse.id})}" class="text-info text-decoration-none small">Refresh</a>
+                <a th:href="@{/ui/warehouses/{id}(id=${warehouse.id})}" class="text-info text-decoration-none small">רענן נתונים</a>
             </div>
         </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-outline-info px-4" data-bs-toggle="modal" data-bs-target="#addCategoryModal">+ Category</button>
-            <a class="btn btn-outline-light px-4" th:href="@{/ui}">← Dashboard</a>
+            <button class="btn btn-outline-info px-4" data-bs-toggle="modal" data-bs-target="#addCategoryModal">+ קטגוריה</button>
+            <a class="btn btn-outline-light px-4" th:href="@{/ui}">← תפריט ראשי</a>
         </div>
     </div>
 
     <div class="mb-5">
-        <h6 class="text-uppercase text-muted fw-bold mb-4 small">Categories</h6>
+        <h6 class="text-uppercase text-muted fw-bold mb-4 small">קטגוריות ציוד</h6>
         <div class="nav nav-pills d-flex flex-wrap gap-3" id="pills-tab" role="tablist">
             <div th:each="entry, stat : ${inventoryMap}" class="nav-item" role="presentation">
                 <div class="category-card p-4 text-center nav-link"
@@ -68,7 +65,7 @@
                      th:data-bs-target="'#pane-' + ${stat.index}"
                      role="tab"
                      onclick="showInventory()">
-                    <div class="count-circle" th:text="${#lists.size(entry.value)}">0</div>
+                    <div class="count-circle" th:text="${#maps.size(entry.value)}">0</div>
                     <div class="fw-bold text-white mt-2 small" th:text="${entry.key}">Category</div>
                 </div>
             </div>
@@ -80,107 +77,91 @@
             <div th:each="entry, stat : ${inventoryMap}" class="tab-pane fade" th:id="'pane-' + ${stat.index}" role="tabpanel">
 
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 border-bottom border-secondary pb-3 gap-3">
-                    <h5 class="fw-bold mb-0">Items in <span class="text-info" th:text="${entry.key}">Category</span></h5>
+                    <h5 class="fw-bold mb-0">פריטים בקטגוריית <span class="text-info" th:text="${entry.key}">Category</span></h5>
                     <div class="search-container">
                         <i class="bi bi-search search-icon"></i>
                         <input type="text" class="form-control search-input text-white"
-                               placeholder="חפש לפי סריאל, מוצר או שם חייל..."
+                               placeholder="חפש דגם או סריאל..."
                                onkeyup="filterInventory(this)">
                     </div>
-                    <a class="btn btn-primary btn-sm px-3" th:href="@{/ui/warehouses/{id}/add(id=${warehouse.id}, cat=${entry.key})}">+ Add Item</a>
+                    <a class="btn btn-primary btn-sm px-3" th:href="@{/ui/warehouses/{id}/add(id=${warehouse.id}, cat=${entry.key})}">+ הוסף פריט</a>
                 </div>
 
-                <div th:if="${not #lists.isEmpty(entry.value)}" class="table-responsive">
+                <div class="table-responsive">
                     <table class="table table-dark align-middle mb-0">
                         <thead>
                         <tr class="text-muted border-secondary small text-uppercase">
-                            <th style="width: 40px;"></th>
-                            <th>Serial Number</th>
-                            <th>Product</th>
-                            <th>Qty</th>
-                            <th>Status</th>
-                            <th>Signed By</th>
-                            <th class="text-end">Actions</th>
+                            <th style="width: 50px;"></th>
+                            <th>דגם / קטלוג</th>
+                            <th>כמות</th>
+                            <th>סטטוס</th>
+                            <th class="text-start">פעולות</th>
                         </tr>
                         </thead>
                         <tbody>
-                        <th:block th:each="it : ${entry.value}">
-                            <tr class="main-row border-bottom-0" th:classappend="${it.isKit ? 'kit-row' : ''}">
-                                <td>
-                                    <button th:if="${it.isKit}" class="btn btn-sm rotate-icon border-0 p-0 shadow-none"
-                                            type="button" data-bs-toggle="collapse"
-                                            th:attr="data-bs-target='#kit-' + ${it.item.id}">
-                                        <i class="bi bi-play-fill"></i>
-                                    </button>
-                                </td>
-                                <td class="col-serial">
-                                    <span class="fw-bold" th:classappend="${it.item.serialNumber != null ? 'text-info' : 'text-muted'}"
-                                          th:text="${it.item.serialNumber != null ? it.item.serialNumber : 'Bulk'}">SN</span>
-                                    <span th:if="${it.isKit}" class="badge bg-primary ms-1 badge-kit">KIT</span>
-                                </td>
-                                <td class="col-product">
-                                    <div th:text="${it.item.itemType.name}">Product</div>
-                                    <div th:if="${it.item.notes != null and !it.item.notes.isEmpty()}" class="note-text">
-                                        <i class="bi bi-chat-left-text me-1"></i>[[${it.item.notes}]]
-                                    </div>
-                                </td>
-                                <td><span class="badge bg-dark border border-secondary" th:text="${it.count}">1</span></td>
-                                <td>
-                                    <span class="badge" th:classappend="${it.item.status != null && it.item.status.toString() == 'IN_STOCK' ? 'bg-success' : 'bg-secondary'}"
-                                          th:text="${it.item.status}">STATUS</span>
-                                </td>
-                                <td class="small col-signed" th:text="${it.item.signedBy != null ? it.item.signedBy.fullName : '—'}">—</td>
-                                <td class="text-end">
-                                    <div class="d-flex justify-content-end align-items-center gap-2">
-                                        <button class="btn btn-sm btn-outline-warning border-0"
-                                                type="button"
-                                                th:data-item-id="${it.item.id}"
-                                                th:data-item-notes="${it.item.notes != null ? it.item.notes : ''}"
-                                                th:data-item-status="${it.item.status}"
-                                                onclick="openNotesModal(this)">
-                                            <i class="bi bi-pencil-square"></i>
+                        <th:block th:each="productEntry : ${entry.value}">
+                            <th:block th:with="itemsList=${productEntry.value}, typeName=${productEntry.key}, firstItem=${itemsList[0]}">
+
+                                <tr class="main-row bulk-row border-bottom-0">
+                                    <td>
+                                        <button class="btn btn-sm rotate-icon border-0 p-0 shadow-none"
+                                                type="button" data-bs-toggle="collapse"
+                                                th:attr="data-bs-target='#group-' + ${stat.index} + '-' + ${firstItem.id}">
+                                            <i class="bi bi-chevron-left"></i>
                                         </button>
+                                    </td>
+                                    <td>
+                                        <span class="fw-bold" th:text="${typeName}">Catalog Name</span>
+                                        <span th:if="${firstItem.itemType.isKit}" class="badge bg-primary ms-2 badge-kit">KIT</span>
+                                    </td>
+                                    <td><span class="badge bg-dark border border-info" th:text="${#lists.size(itemsList)}">Qty</span></td>
+                                    <td><span class="small text-info">מקובץ</span></td>
+                                    <td class="text-start"><small class="text-muted">לחץ לפירוט סריאלים</small></td>
+                                </tr>
 
-                                        <form th:if="${it.item.status != null && it.item.status.toString() == 'IN_STOCK'}" th:action="@{/items/ui/sign-bulk}" method="post">
-                                            <input type="hidden" name="itemTypeId" th:value="${it.item.itemType.id}">
-                                            <input type="hidden" name="warehouseId" th:value="${warehouse.id}">
-                                            <input type="hidden" name="quantity" value="1">
-                                            <button class="btn btn-sm btn-success px-3" type="submit">Sign</button>
-                                        </form>
-
-                                        <div th:if="${it.item.status != null && it.item.status.toString() == 'SIGNED' and it.item.signedBy != null and it.item.signedBy.personalNumber == session.user.personalNumber}"
-                                             class="d-flex gap-1 align-items-center">
-                                            <span class="badge bg-primary me-2">Mine</span>
-                                            <button class="btn btn-sm btn-warning"
-                                                    type="button"
-                                                    th:onclick="'openTransferModal(' + ${it.item.id} + ')'">Transfer</button>
+                                <tr th:id="'group-' + ${stat.index} + '-' + ${firstItem.id}" class="collapse">
+                                    <td colspan="5" class="p-0">
+                                        <div class="collapse-area ps-4 py-2 bg-black bg-opacity-25">
+                                            <table class="table table-dark table-sm mb-0">
+                                                <tr th:each="it : ${itemsList}" class="inner-item-row align-middle">
+                                                    <td style="width: 200px;" class="pr-4">
+                                                        <i class="bi bi-upc-scan me-2 text-muted"></i>
+                                                        <span class="small fw-bold text-info" th:text="${it.serialNumber != null ? it.serialNumber : 'ללא סריאל'}">SN</span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="small" th:text="${it.notes != null and !it.notes.isEmpty() ? it.notes : '—'}">Notes</div>
+                                                    </td>
+                                                    <td style="width: 120px;">
+                                                        <span class="badge" th:classappend="${it.status.toString() == 'IN_STOCK' ? 'bg-success' : 'bg-secondary'}"
+                                                              th:text="${it.status}">STATUS</span>
+                                                    </td>
+                                                    <td style="width: 150px;" class="small text-muted" th:text="${it.signedBy != null ? it.signedBy.fullName : '—'}">Owner</td>
+                                                    <td class="text-start ps-3">
+                                                        <div class="d-flex justify-content-start gap-2">
+                                                            <button class="btn btn-sm btn-outline-warning border-0"
+                                                                    type="button"
+                                                                    th:data-item-id="${it.id}"
+                                                                    th:data-item-notes="${it.notes != null ? it.notes : ''}"
+                                                                    th:data-item-status="${it.status}"
+                                                                    onclick="openNotesModal(this)">
+                                                                <i class="bi bi-pencil-square"></i>
+                                                            </button>
+                                                            <form th:if="${it.status.toString() == 'IN_STOCK'}"
+                                                                  th:action="@{/ui/items/{id}/sign(id=${it.id})}" method="post">
+                                                                <button class="btn btn-sm btn-success py-0 px-2" type="submit">חתימה</button>
+                                                            </form>
+                                                            <button th:if="${it.status.toString() == 'SIGNED' and it.signedBy.personalNumber == session.user.personalNumber}"
+                                                                    class="btn btn-sm btn-warning py-0 px-2"
+                                                                    type="button"
+                                                                    th:onclick="'openTransferModal(' + ${it.id} + ')'">העברה</button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </table>
                                         </div>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr th:if="${it.isKit}" class="collapse-row collapse" th:id="'kit-' + ${it.item.id}">
-                                <td colspan="7" class="p-0">
-                                    <div class="ps-5 py-3 pe-4">
-                                        <h6 class="text-info small fw-bold mb-2 text-uppercase">Kit Contents & Condition</h6>
-                                        <div class="row">
-                                            <div th:each="comp : ${it.components}" class="col-md-4 kit-comp-item">
-                                                <div class="d-flex justify-content-between align-items-center w-100">
-                                                    <div>
-                                                        <span class="status-dot" th:classappend="${comp.actualQty < comp.expectedQty ? 'text-danger' : 'text-success'}">●</span>
-                                                        <span class="small text-white-50" th:text="${comp.componentName}">Component</span>
-                                                    </div>
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <span class="fw-bold small" th:classappend="${comp.actualQty < comp.expectedQty ? 'text-danger' : 'text-success'}" th:text="${comp.actualQty + ' / ' + comp.expectedQty}">0 / 1</span>
-                                                        <button class="btn btn-sm btn-link p-0 text-warning" type="button" th:attr="onclick='openCompModal(' + ${it.item.id} + ', \'' + ${comp.componentName} + '\', ' + ${comp.actualQty} + ', ' + ${comp.expectedQty} + ')'">
-                                                            <i class="bi bi-pencil-fill" style="font-size: 0.75rem;"></i>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
+                                    </td>
+                                </tr>
+                            </th:block>
                         </th:block>
                         </tbody>
                     </table>
@@ -201,7 +182,7 @@
                     <h5 class="modal-title">העברת פריט וחתימה</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4">
+                <div class="modal-body p-4 text-end">
                     <div class="mb-3">
                         <label class="form-label small text-muted">מ"א של המקבל:</label>
                         <input type="text" name="toPersonalNumber" class="form-control bg-dark text-white border-secondary" required>
@@ -224,25 +205,33 @@
     </div>
 </div>
 
-<div class="modal fade" id="compModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-sm">
+<div class="modal fade" id="notesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content bg-dark text-white border-secondary shadow-lg">
-            <form th:action="@{/items/ui/update-component}" method="post">
-                <input type="hidden" name="itemId" id="compItemId">
-                <input type="hidden" name="componentName" id="compNameInput">
+            <form th:action="@{/items/ui/update-notes}" method="post">
+                <input type="hidden" name="itemId" id="noteItemId">
                 <div class="modal-header border-secondary">
-                    <h6 class="modal-title" id="compTitle">Update Component</h6>
+                    <h5 class="modal-title text-warning"><i class="bi bi-pencil-square me-2"></i>עדכון פריט</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label small text-muted">Actual Quantity</label>
-                        <input type="number" name="actualQty" id="compActualInput" class="form-control bg-dark text-white border-secondary" min="0">
+                <div class="modal-body p-4 text-end">
+                    <div class="mb-4">
+                        <label class="form-label small text-muted">סטטוס פריט</label>
+                        <select name="status" id="noteItemStatus" class="form-select bg-dark text-white border-secondary">
+                            <option value="IN_STOCK">במלאי (IN STOCK)</option>
+                            <option value="DAMAGED">תקול (DAMAGED)</option>
+                            <option value="MISSING">חסר (MISSING)</option>
+                            <option value="SIGNED">מושאל (SIGNED)</option>
+                        </select>
                     </div>
-                    <div class="small text-muted text-center">Expected: <span id="compExpectedLabel" class="fw-bold"></span></div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">הערות / מצב הפריט:</label>
+                        <textarea name="notes" id="noteTextArea" class="form-control bg-dark text-white border-secondary p-2" rows="4"></textarea>
+                    </div>
                 </div>
                 <div class="modal-footer border-secondary">
-                    <button type="submit" class="btn btn-warning btn-sm w-100 fw-bold text-dark">Save Changes</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ביטול</button>
+                    <button type="submit" class="btn btn-warning px-4 text-dark fw-bold">שמור שינויים</button>
                 </div>
             </form>
         </div>
@@ -255,51 +244,18 @@
             <form th:action="@{/ui/categories/add}" method="post">
                 <input type="hidden" name="warehouseId" th:value="${warehouse.id}">
                 <div class="modal-header border-secondary">
-                    <h5 class="modal-title">Create New Category</h5>
+                    <h5 class="modal-title">יצירת קטגוריה חדשה</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4">
+                <div class="modal-body p-4 text-end">
                     <div class="mb-3">
-                        <label class="form-label small text-muted">Category Name</label>
-                        <input type="text" name="name" class="form-control bg-dark text-white border-secondary p-2" placeholder="e.g. Optics, Radios" required>
+                        <label class="form-label small text-muted">שם הקטגוריה</label>
+                        <input type="text" name="name" class="form-control bg-dark text-white border-secondary p-2" placeholder="למשל: אופטיקה, קשר" required>
                     </div>
                 </div>
                 <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-info px-4 text-dark fw-bold">Save Category</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="notesModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-dark text-white border-secondary shadow-lg">
-            <form th:action="@{/items/ui/update-notes}" method="post">
-                <input type="hidden" name="itemId" id="noteItemId">
-                <div class="modal-header border-secondary">
-                    <h5 class="modal-title text-warning"><i class="bi bi-pencil-square me-2"></i>Update Item</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <div class="mb-4">
-                        <label class="form-label small text-muted">Item Status</label>
-                        <select name="status" id="noteItemStatus" class="form-select bg-dark text-white border-secondary">
-                            <option value="IN_STOCK">IN STOCK</option>
-                            <option value="DAMAGED">DAMAGED</option>
-                            <option value="MISSING">MISSING</option>
-                            <option value="SIGNED">SIGNED</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label small text-muted">Notes / Condition:</label>
-                        <textarea name="notes" id="noteTextArea" class="form-control bg-dark text-white border-secondary p-2" rows="4"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-warning px-4 text-dark fw-bold">Update Item</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ביטול</button>
+                    <button type="submit" class="btn btn-info px-4 text-dark fw-bold">שמור קטגוריה</button>
                 </div>
             </form>
         </div>
@@ -311,7 +267,7 @@
 <script>
     let signaturePad;
 
-    // ניהול גלילה
+    // שמירת מיקום גלילה
     window.onbeforeunload = function() { localStorage.setItem('scrollPos', window.scrollY); };
     window.onload = function() {
         const scrollPos = localStorage.getItem('scrollPos');
@@ -335,15 +291,12 @@
 
     document.getElementById('transferForm').onsubmit = async function(e) {
         e.preventDefault();
-        if (!signaturePad || signaturePad.isEmpty()) { alert("חובה לחתום על הטופס!"); return false; }
+        if (!signaturePad || signaturePad.isEmpty()) { alert("חובה לחתום כדי לאשר העברה!"); return false; }
         document.getElementById('sigInput').value = signaturePad.toDataURL();
         const formData = new FormData(this);
         try {
-            const response = await fetch(this.action, { method: 'POST', body: new URLSearchParams(formData) });
-            if (response.ok || response.redirected) {
-                localStorage.setItem('scrollPos', window.scrollY);
-                window.location.reload();
-            } else { alert("שגיאה בביצוע ההעברה."); }
+            await fetch(this.action, { method: 'POST', body: new URLSearchParams(formData) });
+            window.location.reload();
         } catch (error) { console.error("Error:", error); }
     };
 
@@ -360,22 +313,12 @@
         new bootstrap.Modal(document.getElementById('notesModal')).show();
     }
 
-    function openCompModal(itemId, name, actual, expected) {
-        document.getElementById('compItemId').value = itemId;
-        document.getElementById('compNameInput').value = name;
-        document.getElementById('compActualInput').value = actual;
-        document.getElementById('compActualInput').max = expected;
-        document.getElementById('compExpectedLabel').innerText = expected;
-        document.getElementById('compTitle').innerText = "Update: " + name;
-        new bootstrap.Modal(document.getElementById('compModal')).show();
-    }
-
     function filterInventory(input) {
         const filter = input.value.toLowerCase();
         const activePane = document.querySelector('.tab-pane.show.active');
         if (!activePane) return;
-        const rows = activePane.querySelectorAll('.main-row');
-        rows.forEach(row => {
+        const bulkRows = activePane.querySelectorAll('.bulk-row');
+        bulkRows.forEach(row => {
             const text = row.innerText.toLowerCase();
             row.style.display = text.includes(filter) ? "" : "none";
         });

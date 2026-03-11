@@ -24,7 +24,12 @@ public class ItemType {
     @Column(name = "is_kit", nullable = false)
     private boolean kit = false;
 
-    // --- השדה החדש: בעלים של סוג המוצר ---
+    // --- שדה חדש: קטגוריה ---
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private Category category;
+
+    // --- השדה: בעלים של סוג המוצר ---
     @ManyToOne
     @JoinColumn(name = "owner_user_id")
     private User owner;
@@ -55,6 +60,10 @@ public class ItemType {
 
     public boolean isKit() { return kit; }
     public void setKit(boolean kit) { this.kit = kit; }
+
+    // Getter ו-Setter לקטגוריה (זה יפתור את השגיאה ב-Service)
+    public Category getCategory() { return category; }
+    public void setCategory(Category category) { this.category = category; }
 
     public User getOwner() { return owner; }
     public void setOwner(User owner) { this.owner = owner; }

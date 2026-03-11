@@ -14,18 +14,25 @@ public class TransferService {
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
     private final TransferRequestRepository transferRequestRepository;
-    private final TransactionRepository transactionRepository; // הוספנו את המאגר החדש
+    private final TransactionRepository transactionRepository;
+    // הוספת ה-Repositories החסרים
+    private final WarehouseRepository warehouseRepository;
+    private final ItemTypeRepository itemTypeRepository;
 
     public TransferService(
             ItemRepository itemRepository,
             TransferRequestRepository transferRequestRepository,
             UserRepository userRepository,
-            TransactionRepository transactionRepository // הזרקה לקונסטרקטור
+            TransactionRepository transactionRepository,
+            WarehouseRepository warehouseRepository, // הזרקה חדשה
+            ItemTypeRepository itemTypeRepository    // הזרקה חדשה
     ) {
         this.itemRepository = itemRepository;
         this.transferRequestRepository = transferRequestRepository;
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
+        this.warehouseRepository = warehouseRepository; // אתחול
+        this.itemTypeRepository = itemTypeRepository;    // אתחול
     }
 
     @Transactional
@@ -49,7 +56,6 @@ public class TransferService {
         itemRepository.save(item);
     }
 
-    // המתודה המעודכנת שמקבלת 6 פרמטרים כולל חתימה
     @Transactional
     public void createTransferRequest(Long itemId, String fromPn, String toPn, String note, Integer quantity, String signatureBase64) {
         Item item = itemRepository.findById(itemId)
@@ -75,13 +81,43 @@ public class TransferService {
         tr.setQuantity(requestedQty);
         tr.setStatus(TransferStatus.PENDING);
         tr.setNote(note);
-        tr.setSignatureBase64(signatureBase64); // שמירת החתימה בבקשה
+        tr.setSignatureBase64(signatureBase64);
         tr.setCreatedAt(LocalDateTime.now());
 
         transferRequestRepository.save(tr);
 
         if (requestedQty == item.getQuantity()) {
             item.setStatus(ItemStatus.TRANSFER_PENDING);
+            itemRepository.save(item);
+        }
+    }
+
+    @Transactional
+    public void generateBulkItems(Long warehouseId, Long itemTypeId, String catalogNumber, String prefix, int start, int end) {
+        var warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new RuntimeException("מחסן לא נמצא"));
+        var itemType = itemTypeRepository.findById(itemTypeId)
+                .orElseThrow(() -> new RuntimeException("סוג פריט לא נמצא"));
+
+        // אם המשתמש הזין מק"ט חדש במודאל, נעדכן את סוג הפריט
+        if (catalogNumber != null && !catalogNumber.isEmpty()) {
+            itemType.setCatalogNumber(catalogNumber);
+            itemTypeRepository.save(itemType);
+        }
+
+        for (int i = start; i <= end; i++) {
+            Item item = new Item();
+            item.setWarehouse(warehouse);
+            item.setItemType(itemType);
+            item.setSerialNumber(prefix + i);
+            item.setQuantity(1);
+            item.setStatus(ItemStatus.IN_STOCK);
+
+            // ירושה אוטומטית של הקטגוריה מסוג הפריט
+            if (itemType.getCategory() != null) {
+                item.setCategory(itemType.getCategory());
+            }
+
             itemRepository.save(item);
         }
     }
@@ -110,12 +146,11 @@ public class TransferService {
         LocalDateTime now = LocalDateTime.now();
         Integer transferQty = tr.getQuantity();
 
-        // יצירת Transaction (תיעוד היסטורי קבוע) לפני שינוי המלאי
         Transaction transaction = new Transaction();
         transaction.setItem(item);
         transaction.setIssuer(tr.getFromUser());
         transaction.setReceiver(tr.getToUser());
-        transaction.setSignatureBase64(tr.getSignatureBase64()); // העברת החתימה מהבקשה להיסטוריה
+        transaction.setSignatureBase64(tr.getSignatureBase64());
         transaction.setType("TRANSFER");
         transaction.setConditionNote(tr.getNote());
         transactionRepository.save(transaction);

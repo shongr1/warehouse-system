@@ -384,71 +384,49 @@ public class UiController {
     public String warehouseDetails(@PathVariable Long id, HttpSession session, Model model) {
         if (!AuthController.isLoggedIn(session)) return "redirect:/ui/login";
 
-        // שליפת המשתמש המחובר מהסשן ומבסיס הנתונים
         String pn = AuthController.currentPn(session);
         var me = userRepository.findByPersonalNumber(pn)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Warehouse warehouse = warehouseRepository.findById(id).orElseThrow();
 
-        // התיקון הקריטי: שולף רק פריטים ששייכים למשתמש המחובר (owner) בתוך המחסן הספציפי
+        // שליפת הפריטים של המשתמש במחסן הזה
         List<Item> allItems = itemRepository.findByOwner(me).stream()
                 .filter(item -> item.getWarehouse().getId().equals(id))
-                .collect(Collectors.toList());
+                .toList();
 
-        // קטגוריות מה-DB המשוייכות למחסן
         List<Category> allCategories = categoryRepository.findByWarehouseId(id);
 
-        // שינוי המפה ל-StockGroup כדי לאחד שורות כפולות
-        Map<String, List<StockGroup>> inventoryMap = new LinkedHashMap<>();
+        // מבנה נתונים חדש: קטגוריה -> (שם מוצר -> רשימת פריטים)
+        Map<String, Map<String, List<Item>>> inventoryMap = new LinkedHashMap<>();
 
         // אתחול קטגוריות
         for (Category cat : allCategories) {
-            inventoryMap.put(cat.getName(), new ArrayList<>());
+            inventoryMap.put(cat.getName(), new LinkedHashMap<>());
         }
-        inventoryMap.putIfAbsent("ללא קטגוריה", new ArrayList<>());
+        inventoryMap.putIfAbsent("ללא קטגוריה", new LinkedHashMap<>());
 
-        // מילוי המפה עם לוגיקת קיבוץ
-        // אנחנו מקבצים את הפריטים לפי (סוג פריט + סטטוס + סיריאל)
-        Map<String, Map<String, List<Item>>> groupedByCatThenType = allItems.stream()
-                .collect(Collectors.groupingBy(
-                        item -> (item.getCategory() != null) ? item.getCategory().getName() : "ללא קטגוריה",
-                        Collectors.groupingBy(item ->
-                                item.getItemType().getId() + "-" +
-                                        item.getStatus() + "-" +
-                                        (item.getSerialNumber() != null ? item.getSerialNumber() : "BULK")
-                        )
-                ));
+        // מילוי המפה בקיבוץ כפול: קטגוריה ולאחר מכן שם סוג הפריט
+        for (Item item : allItems) {
+            String catName = (item.getCategory() != null) ? item.getCategory().getName() : "ללא קטגוריה";
+            String typeName = item.getItemType().getName();
 
-        // הפיכת הקבוצות לאובייקטים של StockGroup
-        groupedByCatThenType.forEach((catName, groups) -> {
-            List<StockGroup> stockGroups = groups.values().stream()
-                    .map(list -> new StockGroup(list.get(0), list.size()))
-                    .collect(Collectors.toList());
-            inventoryMap.put(catName, stockGroups);
-        });
+            inventoryMap.get(catName)
+                    .computeIfAbsent(typeName, k -> new ArrayList<>())
+                    .add(item);
+        }
 
-        // צ'קליסט וסיכומי מלאי
+        // שליפת רכיבי קיט (Checklist)
         List<Long> itemIds = allItems.stream().map(Item::getId).toList();
         Map<Long, List<KitItemComponent>> kitChecklist = new HashMap<>();
-
         if (!itemIds.isEmpty()) {
             kitChecklist = kitItemComponentRepository.findAllByKitItem_IdIn(itemIds)
                     .stream()
                     .collect(Collectors.groupingBy(comp -> comp.getKitItem().getId()));
         }
 
-        var stocks = allItems.stream()
-                .collect(Collectors.groupingBy(Item::getItemType, Collectors.counting()))
-                .entrySet().stream()
-                .map(e -> new Object() {
-                    public final ItemType itemType = e.getKey();
-                    public final long quantity = e.getValue();
-                }).toList();
-
         model.addAttribute("warehouse", warehouse);
-        model.addAttribute("inventoryMap", inventoryMap);
-        model.addAttribute("stocks", stocks);
+        model.addAttribute("inventoryMap", inventoryMap); // המבנה המקובץ
         model.addAttribute("kitChecklist", kitChecklist);
         model.addAttribute("me", me);
 
